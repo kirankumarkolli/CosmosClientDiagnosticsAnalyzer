@@ -271,7 +271,7 @@ class DiagnosticsParser {
 
         const normalized = {};
         for (const key of Object.keys(obj)) {
-            // Convert "duration in milliseconds" to "duration", etc.
+            // Convert various key formats to camelCase
             let newKey = key;
             if (key === 'duration in milliseconds') newKey = 'duration';
             else if (key === 'start time') newKey = 'startTime';
@@ -280,6 +280,15 @@ class DiagnosticsParser {
             else if (key === 'AddressResolutionStatistics') newKey = 'addressResolutionStatistics';
             else if (key === 'transportRequestTimeline') newKey = 'transportRequestTimeline';
             else if (key === 'requestTimeline') newKey = 'requestTimeline';
+            else if (key === 'DurationInMs') newKey = 'durationInMs';
+            else if (key === 'ResourceType') newKey = 'resourceType';
+            else if (key === 'OperationType') newKey = 'operationType';
+            else if (key === 'StatusCode') newKey = 'statusCode';
+            else if (key === 'SubStatusCode') newKey = 'subStatusCode';
+            else if (key === 'StoreResult') newKey = 'storeResult';
+            else if (key === 'StorePhysicalAddress') newKey = 'storePhysicalAddress';
+            else if (key === 'BELatencyInMs') newKey = 'beLatencyInMs';
+            else if (key === 'TransportException') newKey = 'transportException';
 
             normalized[newKey] = this.normalizeKeys(obj[key]);
         }
@@ -295,29 +304,32 @@ class DiagnosticsParser {
         for (const diag of diagnostics) {
             const children = this.getRecursiveChildren(diag);
             for (const child of children) {
+                // Handle both normalized and original key names
                 const stats = child.data?.clientSideRequestStats?.storeResponseStatistics;
                 if (!stats) continue;
 
                 for (const stat of stats) {
-                    if (!stat.StoreResult?.StorePhysicalAddress) continue;
+                    // Use normalized keys (lowercase first letter)
+                    const storeResult = stat.storeResult || stat.StoreResult;
+                    if (!storeResult?.storePhysicalAddress && !storeResult?.StorePhysicalAddress) continue;
 
-                    const timeline = stat.StoreResult.transportRequestTimeline;
+                    const timeline = storeResult.transportRequestTimeline;
                     interactions.push({
-                        resourceType: stat.ResourceType,
-                        operationType: stat.OperationType,
-                        statusCode: stat.StoreResult.StatusCode,
-                        subStatusCode: stat.StoreResult.SubStatusCode,
-                        durationInMs: stat.DurationInMs,
+                        resourceType: stat.resourceType || stat.ResourceType,
+                        operationType: stat.operationType || stat.OperationType,
+                        statusCode: storeResult.statusCode || storeResult.StatusCode,
+                        subStatusCode: storeResult.subStatusCode || storeResult.SubStatusCode,
+                        durationInMs: stat.durationInMs || stat.DurationInMs || 0,
                         created: this.getTimelineEvent(timeline, 'Created'),
                         channelAcquisitionStarted: this.getTimelineEvent(timeline, 'ChannelAcquisitionStarted'),
                         pipelined: this.getTimelineEvent(timeline, 'Pipelined'),
                         transitTime: this.getTimelineEvent(timeline, 'Transit Time'),
                         received: this.getTimelineEvent(timeline, 'Received'),
                         completed: this.getTimelineEvent(timeline, 'Completed'),
-                        beLatencyInMs: stat.StoreResult.BELatencyInMs,
+                        beLatencyInMs: storeResult.beLatencyInMs || storeResult.BELatencyInMs,
                         lastEvent: this.getLastEvent(timeline),
                         bottleneckEvent: this.getBottleneckEvent(timeline),
-                        storePhysicalAddress: stat.StoreResult.StorePhysicalAddress,
+                        storePhysicalAddress: storeResult.storePhysicalAddress || storeResult.StorePhysicalAddress,
                         rawJson: diag._rawJson
                     });
                 }
