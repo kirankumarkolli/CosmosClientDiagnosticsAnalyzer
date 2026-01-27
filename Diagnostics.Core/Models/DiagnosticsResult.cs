@@ -39,6 +39,8 @@ public class OperationBucket
 }
 
 
+
+
 public class NetworkInteraction
 {
     public string? ResourceType { get; set; }
@@ -65,6 +67,8 @@ public class NetworkInteraction
     public string? TenantId { get; set; }
     public string? StorePhysicalAddress { get; set; }
     public string? TransportException { get; set; }
+    public string? TransportExceptionMessage { get; set; }
+    public string? TransportErrorCode { get; set; }
     public string? RawJson { get; set; }
 }
 
@@ -82,6 +86,7 @@ public class GroupedEntry
     public string? SubStatusCode { get; set; }
     public string? ResourceType { get; set; }
     public string? OperationType { get; set; }
+    public string? TransportErrorCode { get; set; }
     public string? RawJson { get; set; }
 }
 

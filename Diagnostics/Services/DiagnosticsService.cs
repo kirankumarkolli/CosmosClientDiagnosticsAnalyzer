@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Diagnostics.Models;
 
 namespace Diagnostics.Services;
@@ -15,6 +16,36 @@ public class DiagnosticsService
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Skip,
         NumberHandling = JsonNumberHandling.AllowReadingFromString
     };
+
+    // Regex to extract error code from TransportException
+    private static readonly Regex ErrorCodeRegex = new(@"error code:\s*(\w+(?:\s*\[0x[0-9A-Fa-f]+\])?)", RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
+    /// <summary>
+    /// Parses TransportException to extract the message (up to "Time:") and error code
+    /// </summary>
+    private static (string? Message, string? ErrorCode) ParseTransportException(string? exception)
+    {
+        if (string.IsNullOrEmpty(exception))
+            return (null, null);
+
+        // Extract message up to "(Time:" or just the first part
+        string message = exception;
+        var timeIndex = exception.IndexOf("(Time:", StringComparison.OrdinalIgnoreCase);
+        if (timeIndex > 0)
+        {
+            message = exception.Substring(0, timeIndex).Trim();
+        }
+
+        // Extract error code using regex
+        string? errorCode = null;
+        var match = ErrorCodeRegex.Match(exception);
+        if (match.Success)
+        {
+            errorCode = match.Groups[1].Value;
+        }
+
+        return (message, errorCode);
+    }
 
     public DiagnosticsResult AnalyzeDiagnostics(string fileContent, int latencyThreshold = 600)
     {
@@ -101,33 +132,38 @@ public class DiagnosticsService
 
         var nwInteractions = storeResponseStatistics
             .Where(e => e.Store.StoreResult?.StorePhysicalAddress != null)
-            .Select(e => new NetworkInteraction
-            {
-                ResourceType = e.Store.ResourceType,
-                OperationType = e.Store.OperationType,
-                StatusCode = e.Store.StoreResult!.StatusCode,
-                SubStatusCode = e.Store.StoreResult.SubStatusCode,
-                DurationInMs = e.Store.DurationInMs,
-                Created = e.Store.StoreResult.TransportRequestTimeline?.Created,
-                ChannelAcquisitionStarted = e.Store.StoreResult.TransportRequestTimeline?.ChannelAcquisitionStarted,
-                Pipelined = e.Store.StoreResult.TransportRequestTimeline?.Pipelined,
-                TransitTime = e.Store.StoreResult.TransportRequestTimeline?.TransitTime,
-                Received = e.Store.StoreResult.TransportRequestTimeline?.Received,
-                Completed = e.Store.StoreResult.TransportRequestTimeline?.Completed,
-                BELatencyInMs = e.Store.StoreResult.BELatencyInMs,
-                InflightRequests = e.Store.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.inflightRequests,
-                OpenConnections = e.Store.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.openConnections,
-                CallsPendingReceive = e.Store.StoreResult.TransportRequestTimeline?.connectionStats?.callsPendingReceive,
-                WaitForConnectionInit = e.Store.StoreResult.TransportRequestTimeline?.connectionStats?.waitforConnectionInit,
-                LastEvent = e.Store.StoreResult.TransportRequestTimeline?.GetLastEvent(),
-                BottleneckEventName = e.Store.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.Name,
-                BottleneckEventDuration = e.Store.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.DurationInMs,
-                PartitionId = e.Store.StoreResult.PartitionId,
-                ReplicaId = e.Store.StoreResult.ReplicaId,
-                TenantId = e.Store.StoreResult.TenantId,
-                StorePhysicalAddress = e.Store.StoreResult.StorePhysicalAddress,
-                TransportException = e.Store.StoreResult.TransportException,
-                RawJson = e.RawJson
+            .Select(e => {
+                var (exceptionMessage, errorCode) = ParseTransportException(e.Store.StoreResult!.TransportException);
+                return new NetworkInteraction
+                {
+                    ResourceType = e.Store.ResourceType,
+                    OperationType = e.Store.OperationType,
+                    StatusCode = e.Store.StoreResult!.StatusCode,
+                    SubStatusCode = e.Store.StoreResult.SubStatusCode,
+                    DurationInMs = e.Store.DurationInMs,
+                    Created = e.Store.StoreResult.TransportRequestTimeline?.Created,
+                    ChannelAcquisitionStarted = e.Store.StoreResult.TransportRequestTimeline?.ChannelAcquisitionStarted,
+                    Pipelined = e.Store.StoreResult.TransportRequestTimeline?.Pipelined,
+                    TransitTime = e.Store.StoreResult.TransportRequestTimeline?.TransitTime,
+                    Received = e.Store.StoreResult.TransportRequestTimeline?.Received,
+                    Completed = e.Store.StoreResult.TransportRequestTimeline?.Completed,
+                    BELatencyInMs = e.Store.StoreResult.BELatencyInMs,
+                    InflightRequests = e.Store.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.inflightRequests,
+                    OpenConnections = e.Store.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.openConnections,
+                    CallsPendingReceive = e.Store.StoreResult.TransportRequestTimeline?.connectionStats?.callsPendingReceive,
+                    WaitForConnectionInit = e.Store.StoreResult.TransportRequestTimeline?.connectionStats?.waitforConnectionInit,
+                    LastEvent = e.Store.StoreResult.TransportRequestTimeline?.GetLastEvent(),
+                    BottleneckEventName = e.Store.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.Name,
+                    BottleneckEventDuration = e.Store.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.DurationInMs,
+                    PartitionId = e.Store.StoreResult.PartitionId,
+                    ReplicaId = e.Store.StoreResult.ReplicaId,
+                    TenantId = e.Store.StoreResult.TenantId,
+                    StorePhysicalAddress = e.Store.StoreResult.StorePhysicalAddress,
+                    TransportException = e.Store.StoreResult.TransportException,
+                    TransportExceptionMessage = exceptionMessage,
+                    TransportErrorCode = errorCode,
+                    RawJson = e.RawJson
+                };
             })
             .ToList();
 
@@ -184,10 +220,10 @@ public class DiagnosticsService
             .OrderByDescending(e => e.Count)
             .ToList();
 
-        // Group by Transport Exception
+        // Group by Transport Exception (using parsed message without timestamp)
         result.TransportExceptionGroups = highLatencyNWInteractions
-            .Where(e => !string.IsNullOrEmpty(e.TransportException))
-            .GroupBy(e => e.TransportException ?? "Unknown")
+            .Where(e => !string.IsNullOrEmpty(e.TransportExceptionMessage))
+            .GroupBy(e => e.TransportExceptionMessage ?? "Unknown")
             .Select(e => new GroupedResult 
             { 
                 Key = e.Key, 
@@ -201,6 +237,7 @@ public class DiagnosticsService
                         SubStatusCode = x.SubStatusCode,
                         ResourceType = x.ResourceType,
                         OperationType = x.OperationType,
+                        TransportErrorCode = x.TransportErrorCode,
                         RawJson = x.RawJson
                     })
                     .ToList()
