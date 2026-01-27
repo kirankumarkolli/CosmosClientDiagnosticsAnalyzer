@@ -59,16 +59,21 @@ public class HtmlDumpService
             }
         }
         
-        // High Latency Network Interactions
+        // High Latency Network Interactions (collapsible, hidden by default)
         if (result.HighLatencyNetworkInteractions.Any())
         {
             sb.AppendLine("<div class='section'>");
+            sb.AppendLine($"<div class='section-header collapsible' onclick=\"toggleSection('nwInteractions')\">");
             sb.AppendLine($"<h2>🌐 High Latency Network Interactions (Top {Math.Min(100, result.HighLatencyNetworkInteractions.Count)})</h2>");
+            sb.AppendLine("<span class='collapse-icon' id='nwInteractions-icon'>▶</span>");
+            sb.AppendLine("</div>");
+            sb.AppendLine("<div id='nwInteractions' class='section-content' style='display:none;'>");
             sb.AppendLine(DumpTable("Network Interactions", result.HighLatencyNetworkInteractions.Take(20)));
             if (result.HighLatencyNetworkInteractions.Count > 20)
             {
                 sb.AppendLine($"<p class='note'>Showing 20 of {result.HighLatencyNetworkInteractions.Count} interactions</p>");
             }
+            sb.AppendLine("</div>");
             sb.AppendLine("</div>");
         }
         
@@ -513,9 +518,51 @@ summary:hover {
     cursor: pointer;
 }
 
+
 .bucket-link:hover {
     color: #81d4fa;
     text-decoration: underline;
+}
+
+/* Collapsible section header */
+.section-header.collapsible {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px 10px;
+    margin: -20px -20px 15px -20px;
+    background: linear-gradient(135deg, #2d3748, #1a202c);
+    border-radius: 8px 8px 0 0;
+    transition: background 0.2s;
+}
+
+.section-header.collapsible:hover {
+    background: linear-gradient(135deg, #3d4758, #2a303c);
+}
+
+.section-header.collapsible h2 {
+    margin: 0;
+    font-size: 1.1em;
+}
+
+.collapse-icon {
+    font-size: 14px;
+    color: #4fc3f7;
+    transition: transform 0.3s;
+}
+
+.collapse-icon.expanded {
+    transform: rotate(90deg);
+}
+
+.section-content {
+    animation: expandIn 0.3s ease-out;
+}
+
+@keyframes expandIn {
+    from { opacity: 0; max-height: 0; }
+    to { opacity: 1; max-height: 5000px; }
 }
 
 /* Bucket details section */
@@ -720,6 +767,22 @@ document.querySelectorAll('.dump-table td').forEach(cell => {
         cell.title = 'Click to copy';
     }
 });
+
+// Toggle collapsible section
+function toggleSection(sectionId) {
+    const content = document.getElementById(sectionId);
+    const icon = document.getElementById(sectionId + '-icon');
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.classList.add('expanded');
+        icon.textContent = '▼';
+    } else {
+        content.style.display = 'none';
+        icon.classList.remove('expanded');
+        icon.textContent = '▶';
+    }
+}
 
 // Show bucket details
 function showBucket(bucketId) {
