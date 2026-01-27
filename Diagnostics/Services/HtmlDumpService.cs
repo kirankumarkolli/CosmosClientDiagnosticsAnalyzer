@@ -213,6 +213,16 @@ public class HtmlDumpService
                 sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{groupId}')\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
+                
+                // Hidden sections for percentile entries with proper ranges
+                // P50: values ≤ P50
+                sb.AppendLine(CreateTransportEventPercentileSection(group, "P50", group.P50, null, group.EntriesAtP50));
+                // P75: values > P50 and ≤ P75
+                sb.AppendLine(CreateTransportEventPercentileSection(group, "P75", group.P75, group.P50, group.EntriesAtP75));
+                // P90: values > P75 and ≤ P90
+                sb.AppendLine(CreateTransportEventPercentileSection(group, "P90", group.P90, group.P75, group.EntriesAtP90));
+                // P95: values > P90 and ≤ P95
+                sb.AppendLine(CreateTransportEventPercentileSection(group, "P95", group.P95, group.P90, group.EntriesAtP95));
             }
         }
         
@@ -554,15 +564,19 @@ public class HtmlDumpService
         {
             rowNum++;
             var groupId = GetSafeId($"transport-{group.Status}");
+            var p50Id = GetSafeId($"transport-{group.Status}-p50");
+            var p75Id = GetSafeId($"transport-{group.Status}-p75");
+            var p90Id = GetSafeId($"transport-{group.Status}-p90");
+            var p95Id = GetSafeId($"transport-{group.Status}-p95");
             sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")} clickable-row' onclick=\"showGroup('{groupId}')\">");
             sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
             sb.AppendLine($"<td><span class='enum'>{group.Status}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Min:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P50:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P75:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P90:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P95:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p50Id}')\"><span class='number percentile-link'>{group.P50:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p75Id}')\"><span class='number percentile-link'>{group.P75:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p90Id}')\"><span class='number percentile-link'>{group.P90:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p95Id}')\"><span class='number percentile-link'>{group.P95:F2}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Max:F2}</span></td>");
             sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
@@ -585,6 +599,27 @@ public class HtmlDumpService
         var percentileId = GetSafeId($"{prefix}-{group.Key}-{percentileName.ToLower()}");
         sb.AppendLine($"<div id='group-{percentileId}' class='section bucket-details' style='display:none;'>");
         sb.AppendLine($"<h2>📊 {percentileName} Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
+        
+        // Show the range description
+        string rangeDescription = lowerBound.HasValue 
+            ? $"Showing entries where duration > {lowerBound.Value:F2}ms and ≤ {percentileValue:F2}ms"
+            : $"Showing entries where duration ≤ {percentileValue:F2}ms";
+        sb.AppendLine($"<p class='percentile-info'>{rangeDescription}</p>");
+        
+        sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{percentileId}')\">✕ Close</button>");
+        sb.AppendLine(DumpTable($"Showing {entries.Count} entries in {percentileName} range", entries, sortable: true, tableId: $"percentile-table-{percentileId}"));
+        sb.AppendLine("</div>");
+        return sb.ToString();
+    }
+
+    private string CreateTransportEventPercentileSection(TransportEventGroup group, string percentileName, double percentileValue, double? lowerBound, List<GroupedEntry> entries)
+    {
+        if (!entries.Any()) return string.Empty;
+        
+        var sb = new StringBuilder();
+        var percentileId = GetSafeId($"transport-{group.Status}-{percentileName.ToLower()}");
+        sb.AppendLine($"<div id='group-{percentileId}' class='section bucket-details' style='display:none;'>");
+        sb.AppendLine($"<h2>📊 {percentileName} Entries for: {group.Status}</h2>");
         
         // Show the range description
         string rangeDescription = lowerBound.HasValue 
