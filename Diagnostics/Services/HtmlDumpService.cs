@@ -475,7 +475,7 @@ public class HtmlDumpService
         // Embed the data as JSON
         sb.AppendLine("<script>");
         sb.AppendLine("const systemMetricsData = {");
-        sb.AppendLine($"  labels: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.DateUtc:HH:mm:ss}'"))}],");
+        sb.AppendLine($"  labels: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.DateUtc:yyyy-MM-dd HH:mm:ss}'"))}],");
         sb.AppendLine($"  cpu: [{string.Join(",", metrics.Snapshots.Select(s => s.Cpu.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))}],");
         sb.AppendLine($"  memory: [{string.Join(",", metrics.Snapshots.Select(s => (s.Memory / 1024.0 / 1024.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))}],");
         sb.AppendLine($"  threadWait: [{string.Join(",", metrics.Snapshots.Select(s => s.ThreadWaitIntervalInMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))}],");
@@ -603,7 +603,7 @@ public class HtmlDumpService
         // Embed the data as JSON
         sb.AppendLine("<script>");
         sb.AppendLine("const clientConfigData = {");
-        sb.AppendLine($"  labels: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.DateUtc:HH:mm:ss}'"))}],");
+        sb.AppendLine($"  labels: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.DateUtc:yyyy-MM-dd HH:mm:ss}'"))}],");
         sb.AppendLine($"  processorCount: [{string.Join(",", metrics.Snapshots.Select(s => s.ProcessorCount))}],");
         sb.AppendLine($"  clientsCreated: [{string.Join(",", metrics.Snapshots.Select(s => s.NumberOfClientsCreated))}],");
         sb.AppendLine($"  activeClients: [{string.Join(",", metrics.Snapshots.Select(s => s.NumberOfActiveClients))}],");
@@ -617,6 +617,7 @@ public class HtmlDumpService
         sb.AppendLine("  ]");
         sb.AppendLine("};");
         sb.AppendLine("</script>");
+        
         
         return sb.ToString();
     }
