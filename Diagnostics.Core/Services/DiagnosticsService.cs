@@ -430,16 +430,6 @@ public class DiagnosticsService
             {
                 AddSystemInfoSnapshot(allSnapshots, info);
             }
-            
-            // Also check SystemInfoLower (camelCase variant)
-            var systemInfoLower = diag.Recursive()
-                .Where(c => c.Data?.ClientSideRequestStats?.SystemInfoLower != null)
-                .SelectMany(c => c.Data!.ClientSideRequestStats!.SystemInfoLower!);
-
-            foreach (var info in systemInfoLower)
-            {
-                AddSystemInfoSnapshot(allSnapshots, info);
-            }
         }
 
         if (!allSnapshots.Any())
