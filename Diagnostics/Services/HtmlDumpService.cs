@@ -373,6 +373,7 @@ public class HtmlDumpService
     {
         var sb = new StringBuilder();
         
+        
         sb.AppendLine("<div class='dump-container'>");
         sb.AppendLine("<div class='dump-header'>System Metrics Statistics</div>");
         sb.AppendLine("<table class='dump-table'>");
@@ -385,6 +386,7 @@ public class HtmlDumpService
         sb.AppendLine("<th>P75</th>");
         sb.AppendLine("<th>P90</th>");
         sb.AppendLine("<th>P95</th>");
+        sb.AppendLine("<th>P99</th>");
         sb.AppendLine("<th>Max</th>");
         sb.AppendLine("</tr></thead>");
         
@@ -399,6 +401,7 @@ public class HtmlDumpService
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P75:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P90:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P95:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P99:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Max:F2}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -410,6 +413,7 @@ public class HtmlDumpService
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.P75 / 1024 / 1024:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.P90 / 1024 / 1024:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.P95 / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.P99 / 1024 / 1024:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.Max / 1024 / 1024:F2}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -421,6 +425,7 @@ public class HtmlDumpService
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P75:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P90:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P95:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P99:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Max:F2}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -432,6 +437,7 @@ public class HtmlDumpService
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P75:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P90:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P95:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P99:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Max:N0}</span></td>");
         sb.AppendLine("</tr>");
         

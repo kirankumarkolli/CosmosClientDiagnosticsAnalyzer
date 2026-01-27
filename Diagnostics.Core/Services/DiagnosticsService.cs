@@ -491,6 +491,7 @@ public class DiagnosticsService
             P75 = GetPercentile(sortedValues, 75),
             P90 = GetPercentile(sortedValues, 90),
             P95 = GetPercentile(sortedValues, 95),
+            P99 = GetPercentile(sortedValues, 99),
             Max = sortedValues.Last(),
             Avg = sortedValues.Average()
         };

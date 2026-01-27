@@ -88,6 +88,7 @@ public class MetricStatistics
     public double P75 { get; set; }
     public double P90 { get; set; }
     public double P95 { get; set; }
+    public double P99 { get; set; }
     public double Max { get; set; }
     public double Avg { get; set; }
 }
