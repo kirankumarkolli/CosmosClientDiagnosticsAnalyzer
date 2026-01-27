@@ -10,6 +10,7 @@ public class DiagnosticsResult
     public List<NetworkInteraction> HighLatencyNetworkInteractions { get; set; } = new();
     public List<GroupedResult> ResourceTypeGroups { get; set; } = new();
     public List<GroupedResult> StatusCodeGroups { get; set; } = new();
+    public List<GroupedResult> TransportExceptionGroups { get; set; } = new();
     public List<TransportEventGroup> TransportEventGroups { get; set; } = new();
     
     // Store all high latency diagnostics for drill-down
@@ -37,6 +38,7 @@ public class OperationBucket
     public int Count { get; set; }
 }
 
+
 public class NetworkInteraction
 {
     public string? ResourceType { get; set; }
@@ -62,6 +64,7 @@ public class NetworkInteraction
     public string? ReplicaId { get; set; }
     public string? TenantId { get; set; }
     public string? StorePhysicalAddress { get; set; }
+    public string? TransportException { get; set; }
     public string? RawJson { get; set; }
 }
 

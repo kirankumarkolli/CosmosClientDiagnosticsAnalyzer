@@ -126,6 +126,7 @@ public class DiagnosticsService
                 ReplicaId = e.Store.StoreResult.ReplicaId,
                 TenantId = e.Store.StoreResult.TenantId,
                 StorePhysicalAddress = e.Store.StoreResult.StorePhysicalAddress,
+                TransportException = e.Store.StoreResult.TransportException,
                 RawJson = e.RawJson
             })
             .ToList();
@@ -163,6 +164,30 @@ public class DiagnosticsService
         // Group by Status Code -> Sub Status Code
         result.StatusCodeGroups = highLatencyNWInteractions
             .GroupBy(e => $"{e.StatusCode} -> {e.SubStatusCode}")
+            .Select(e => new GroupedResult 
+            { 
+                Key = e.Key, 
+                Count = e.Count(),
+                Entries = e.OrderByDescending(x => x.DurationInMs)
+                    .Take(50)
+                    .Select(x => new GroupedEntry
+                    {
+                        DurationInMs = x.DurationInMs,
+                        StatusCode = x.StatusCode,
+                        SubStatusCode = x.SubStatusCode,
+                        ResourceType = x.ResourceType,
+                        OperationType = x.OperationType,
+                        RawJson = x.RawJson
+                    })
+                    .ToList()
+            })
+            .OrderByDescending(e => e.Count)
+            .ToList();
+
+        // Group by Transport Exception
+        result.TransportExceptionGroups = highLatencyNWInteractions
+            .Where(e => !string.IsNullOrEmpty(e.TransportException))
+            .GroupBy(e => e.TransportException ?? "Unknown")
             .Select(e => new GroupedResult 
             { 
                 Key = e.Key, 

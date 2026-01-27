@@ -119,6 +119,27 @@ public class HtmlDumpService
             }
         }
         
+        // Transport Exception Groups
+        if (result.TransportExceptionGroups.Any())
+        {
+            sb.AppendLine("<div class='section'>");
+            sb.AppendLine("<h2>⚠️ GroupBy TransportException</h2>");
+            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine(DumpGroupedResultTable("Transport Exception Groups", result.TransportExceptionGroups, "transportException"));
+            sb.AppendLine("</div>");
+            
+            // Hidden sections for each group's entries
+            foreach (var group in result.TransportExceptionGroups)
+            {
+                var groupId = GetSafeId($"transportException-{group.Key}");
+                sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
+                sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
+                sb.AppendLine("</div>");
+            }
+        }
+        
         // Transport Event Groups
         if (result.TransportEventGroups.Any())
         {
