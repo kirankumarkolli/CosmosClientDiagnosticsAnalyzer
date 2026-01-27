@@ -800,8 +800,9 @@ function showJson(jsonId) {
     const jsonEl = document.getElementById(jsonId);
     if (!jsonEl) return;
     
-    currentJsonContent = jsonEl.innerText;
-    document.getElementById('jsonModalContent').innerText = currentJsonContent;
+    // Get the text content and trim whitespace
+    currentJsonContent = jsonEl.textContent.trim();
+    document.getElementById('jsonModalContent').textContent = currentJsonContent;
     document.getElementById('jsonModal').style.display = 'block';
     document.body.style.overflow = 'hidden';
 }
@@ -827,12 +828,25 @@ function copyJsonContent() {
 
 function formatJson() {
     try {
-        const parsed = JSON.parse(currentJsonContent);
+        // Trim whitespace and try to parse
+        const trimmed = currentJsonContent.trim();
+        const parsed = JSON.parse(trimmed);
         const formatted = JSON.stringify(parsed, null, 2);
         document.getElementById('jsonModalContent').innerText = formatted;
         currentJsonContent = formatted;
+        
+        // Update button to show success
+        const btn = document.querySelector('.btn-format');
+        const originalText = btn.innerText;
+        btn.innerText = '✓ Formatted!';
+        btn.style.background = '#28a745';
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.background = '#0e639c';
+        }, 2000);
     } catch (e) {
-        alert('Invalid JSON - cannot format');
+        console.error('JSON parse error:', e);
+        alert('Invalid JSON - cannot format\\n\\nError: ' + e.message);
     }
 }
 
