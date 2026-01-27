@@ -388,6 +388,7 @@ public class HtmlDumpService
         return sb.ToString();
     }
 
+
     private static string FormatValue(object? value)
     {
         if (value == null)
@@ -407,8 +408,6 @@ public class HtmlDumpService
         
         if (value is string s)
         {
-            if (s.Length > 50)
-                return $"<span class='string' title='{System.Web.HttpUtility.HtmlEncode(s)}'>{System.Web.HttpUtility.HtmlEncode(s[..47])}...</span>";
             return $"<span class='string'>{System.Web.HttpUtility.HtmlEncode(s)}</span>";
         }
         
