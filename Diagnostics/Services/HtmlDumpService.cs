@@ -52,8 +52,9 @@ public class HtmlDumpService
                 var bucketId = GetSafeId(bucket.Bucket);
                 sb.AppendLine($"<div id='bucket-{bucketId}' class='section bucket-details' style='display:none;'>");
                 sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(bucket.Bucket)}</h2>");
+                sb.AppendLine("<p class='note'>Click on column headers to sort</p>");
                 sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('bucket-{bucketId}').style.display='none'\">✕ Close</button>");
-                sb.AppendLine(DumpTable($"Showing {bucketEntries.Count} of {bucket.Count} entries", bucketEntries));
+                sb.AppendLine(DumpTable($"Showing {bucketEntries.Count} of {bucket.Count} entries", bucketEntries, sortable: true, tableId: $"bucket-table-{bucketId}"));
                 sb.AppendLine("</div>");
             }
         }
@@ -129,7 +130,7 @@ public class HtmlDumpService
         return sb.ToString();
     }
 
-    private string DumpTable<T>(string title, IEnumerable<T> items)
+    private string DumpTable<T>(string title, IEnumerable<T> items, bool sortable = false, string? tableId = null)
     {
         var sb = new StringBuilder();
         var itemsList = items.ToList();
@@ -140,9 +141,10 @@ public class HtmlDumpService
             return sb.ToString();
         }
         
+        var id = tableId ?? $"table-{Guid.NewGuid():N}";
         sb.AppendLine($"<div class='dump-container'>");
         sb.AppendLine($"<div class='dump-header'>{title}</div>");
-        sb.AppendLine("<table class='dump-table'>");
+        sb.AppendLine($"<table class='dump-table{(sortable ? " sortable" : "")}' id='{id}'>");
         
         // Get properties
         var type = typeof(T);
@@ -162,9 +164,18 @@ public class HtmlDumpService
         // Header
         sb.AppendLine("<thead><tr>");
         sb.AppendLine("<th class='row-num'>#</th>");
+        int colIndex = 1;
         foreach (var prop in properties)
         {
-            sb.AppendLine($"<th>{FormatPropertyName(prop.Name)}</th>");
+            if (sortable)
+            {
+                sb.AppendLine($"<th class='sortable' data-col='{colIndex}' onclick=\"sortTable('{id}', {colIndex})\">{FormatPropertyName(prop.Name)} <span class='sort-icon'>⇅</span></th>");
+            }
+            else
+            {
+                sb.AppendLine($"<th>{FormatPropertyName(prop.Name)}</th>");
+            }
+            colIndex++;
         }
         sb.AppendLine("</tr></thead>");
         
@@ -179,7 +190,8 @@ public class HtmlDumpService
             foreach (var prop in properties)
             {
                 var value = prop.GetValue(item);
-                sb.AppendLine($"<td>{FormatValue(value)}</td>");
+                var sortValue = GetSortValue(value);
+                sb.AppendLine($"<td data-sort='{sortValue}'>{FormatValue(value)}</td>");
             }
             sb.AppendLine("</tr>");
         }
@@ -189,6 +201,15 @@ public class HtmlDumpService
         sb.AppendLine("</div>");
         
         return sb.ToString();
+    }
+
+    private static string GetSortValue(object? value)
+    {
+        if (value == null) return "";
+        if (value is double d) return d.ToString("F6");
+        if (value is int i) return i.ToString("D10");
+        if (value is DateTime dt) return dt.ToString("o");
+        return System.Web.HttpUtility.HtmlEncode(value.ToString() ?? "");
     }
 
     private string DumpOperationBucketsTable(List<OperationBucket> buckets)
@@ -496,6 +517,44 @@ summary:hover {
 .btn-close:hover {
     background: #c82333;
 }
+
+/* Sortable table headers */
+.sortable th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    padding-right: 25px;
+}
+
+.sortable th.sortable:hover {
+    background: #3a3d41;
+}
+
+.sort-icon {
+    position: absolute;
+    right: 8px;
+    opacity: 0.4;
+    font-size: 12px;
+}
+
+.sortable th.sortable.asc .sort-icon::after {
+    content: '▲';
+}
+
+.sortable th.sortable.desc .sort-icon::after {
+    content: '▼';
+}
+
+.sortable th.sortable.asc .sort-icon,
+.sortable th.sortable.desc .sort-icon {
+    opacity: 1;
+    color: #4fc3f7;
+}
+
+.sortable th.sortable.asc .sort-icon,
+.sortable th.sortable.desc .sort-icon {
+    content: '';
+}
 </style>";
     }
 
@@ -532,6 +591,63 @@ function showBucket(bucketId) {
         bucketEl.style.display = 'block';
         bucketEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+}
+
+// Table sorting
+function sortTable(tableId, colIndex) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('tr'));
+    const th = table.querySelectorAll('thead th')[colIndex];
+    
+    // Determine sort direction
+    const isAsc = th.classList.contains('asc');
+    const isDesc = th.classList.contains('desc');
+    
+    // Remove sort classes from all headers
+    table.querySelectorAll('th.sortable').forEach(h => {
+        h.classList.remove('asc', 'desc');
+    });
+    
+    // Set new sort direction
+    let direction = 1; // ascending
+    if (isAsc) {
+        th.classList.add('desc');
+        direction = -1;
+    } else {
+        th.classList.add('asc');
+        direction = 1;
+    }
+    
+    // Sort rows
+    rows.sort((a, b) => {
+        const cellA = a.cells[colIndex];
+        const cellB = b.cells[colIndex];
+        
+        // Get sort value from data attribute or text content
+        let valA = cellA.getAttribute('data-sort') || cellA.innerText.trim();
+        let valB = cellB.getAttribute('data-sort') || cellB.innerText.trim();
+        
+        // Try to parse as numbers
+        const numA = parseFloat(valA);
+        const numB = parseFloat(valB);
+        
+        if (!isNaN(numA) && !isNaN(numB)) {
+            return (numA - numB) * direction;
+        }
+        
+        // String comparison
+        return valA.localeCompare(valB) * direction;
+    });
+    
+    // Re-append sorted rows and update row numbers
+    rows.forEach((row, index) => {
+        row.cells[0].innerText = index + 1;
+        row.className = (index + 1) % 2 === 0 ? 'even' : 'odd';
+        tbody.appendChild(row);
+    });
 }
 </script>";
     }
