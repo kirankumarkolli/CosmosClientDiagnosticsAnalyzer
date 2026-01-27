@@ -85,7 +85,7 @@ public class ChildData
     public string? QueryMetrics { get; set; }
     
     [JsonPropertyName("System Info")]
-    public SystemInfo[]? SystemInfo { get; set; }
+    public SystemInfoWrapper? SystemInfo { get; set; }
 }
 
 public class ClientSideRequestStats
@@ -97,11 +97,18 @@ public class ClientSideRequestStats
     public StoreResponseStatistics[]? StoreResponseStatistics { get; set; }
     
     [JsonPropertyName("SystemInfo")]
-    public SystemInfo[]? SystemInfo { get; set; }
+    public SystemInfoWrapper? SystemInfo { get; set; }
+}
+
+// Wrapper for System Info containing systemHistory array
+public class SystemInfoWrapper
+{
+    [JsonPropertyName("systemHistory")]
+    public SystemInfoEntry[]? SystemHistory { get; set; }
 }
 
 // System info snapshot from diagnostics JSON
-public class SystemInfo
+public class SystemInfoEntry
 {
     [JsonPropertyName("dateUtc")]
     public DateTime DateUtc { get; set; }
@@ -110,7 +117,7 @@ public class SystemInfo
     public double Cpu { get; set; }
     
     [JsonPropertyName("memory")]
-    public long Memory { get; set; }
+    public double Memory { get; set; }
     
     [JsonPropertyName("threadInfo")]
     public ThreadInfo? ThreadInfo { get; set; }

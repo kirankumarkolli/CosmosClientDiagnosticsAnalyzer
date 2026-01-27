@@ -411,22 +411,22 @@ public class DiagnosticsService
 
         foreach (var (diag, _) in diagnostics)
         {
-            // Get SystemInfo from children data (location 1: ChildData.SystemInfo)
-            var systemInfoFromChildData = diag.Recursive()
-                .Where(c => c.Data?.SystemInfo != null)
-                .SelectMany(c => c.Data!.SystemInfo!);
+            // Get SystemInfo from children data (ChildData["System Info"].systemHistory)
+            var systemHistoryFromChildData = diag.Recursive()
+                .Where(c => c.Data?.SystemInfo?.SystemHistory != null)
+                .SelectMany(c => c.Data!.SystemInfo!.SystemHistory!);
 
-            foreach (var info in systemInfoFromChildData)
+            foreach (var info in systemHistoryFromChildData)
             {
                 AddSystemInfoSnapshot(allSnapshots, info);
             }
             
-            // Get SystemInfo from ClientSideRequestStats (location 2)
-            var systemInfoFromClientStats = diag.Recursive()
-                .Where(c => c.Data?.ClientSideRequestStats?.SystemInfo != null)
-                .SelectMany(c => c.Data!.ClientSideRequestStats!.SystemInfo!);
+            // Get SystemInfo from ClientSideRequestStats (ClientSideRequestStats.SystemInfo.systemHistory)
+            var systemHistoryFromClientStats = diag.Recursive()
+                .Where(c => c.Data?.ClientSideRequestStats?.SystemInfo?.SystemHistory != null)
+                .SelectMany(c => c.Data!.ClientSideRequestStats!.SystemInfo!.SystemHistory!);
 
-            foreach (var info in systemInfoFromClientStats)
+            foreach (var info in systemHistoryFromClientStats)
             {
                 AddSystemInfoSnapshot(allSnapshots, info);
             }
@@ -493,16 +493,17 @@ public class DiagnosticsService
         return result;
     }
 
+
     /// <summary>
     /// Helper to add system info to snapshot list
     /// </summary>
-    private static void AddSystemInfoSnapshot(List<SystemInfoSnapshot> snapshots, SystemInfo info)
+    private static void AddSystemInfoSnapshot(List<SystemInfoSnapshot> snapshots, SystemInfoEntry info)
     {
         snapshots.Add(new SystemInfoSnapshot
         {
             DateUtc = info.DateUtc,
             Cpu = info.Cpu,
-            Memory = info.Memory,
+            Memory = (long)info.Memory,
             ThreadWaitIntervalInMs = info.ThreadInfo?.ThreadWaitIntervalInMs ?? 0,
             NumberOfOpenTcpConnections = info.NumberOfOpenTcpConnection,
             IsThreadStarving = info.ThreadInfo?.IsThreadStarving?.Equals("True", StringComparison.OrdinalIgnoreCase) ?? false,
