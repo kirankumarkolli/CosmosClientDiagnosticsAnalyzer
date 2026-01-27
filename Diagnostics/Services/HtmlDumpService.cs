@@ -82,8 +82,20 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>📁 GroupBy {ResourceType → OperationType}</h2>");
-            sb.AppendLine(DumpTable("Resource Type Groups", result.ResourceTypeGroups));
+            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine(DumpGroupedResultTable("Resource Type Groups", result.ResourceTypeGroups, "resourceType"));
             sb.AppendLine("</div>");
+            
+            // Hidden sections for each group's entries
+            foreach (var group in result.ResourceTypeGroups)
+            {
+                var groupId = GetSafeId($"resourceType-{group.Key}");
+                sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
+                sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
+                sb.AppendLine("</div>");
+            }
         }
         
         // Status Code Groups
@@ -91,8 +103,20 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>🔢 GroupBy {StatusCode → SubStatusCode}</h2>");
-            sb.AppendLine(DumpTable("Status Code Groups", result.StatusCodeGroups));
+            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine(DumpGroupedResultTable("Status Code Groups", result.StatusCodeGroups, "statusCode"));
             sb.AppendLine("</div>");
+            
+            // Hidden sections for each group's entries
+            foreach (var group in result.StatusCodeGroups)
+            {
+                var groupId = GetSafeId($"statusCode-{group.Key}");
+                sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
+                sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
+                sb.AppendLine("</div>");
+            }
         }
         
         // Transport Event Groups
@@ -100,10 +124,12 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>🚀 GroupBy LastTransportEvent</h2>");
+            sb.AppendLine("<p class='note'>Click on an event to see related entries with JSON</p>");
             foreach (var group in result.TransportEventGroups)
             {
+                var groupId = GetSafeId($"transport-{group.Status}");
                 sb.AppendLine($"<div class='subsection'>");
-                sb.AppendLine($"<h3>{group.Status} ({group.Count} items)</h3>");
+                sb.AppendLine($"<h3 class='clickable-header' onclick=\"showGroup('{groupId}')\">{group.Status} ({group.Count} items) <span class='click-hint'>👆 click to view entries</span></h3>");
                 if (group.PhaseDetails.Any())
                 {
                     sb.AppendLine(DumpTable($"Phase Details", group.PhaseDetails.Select(p => new
@@ -126,6 +152,17 @@ public class HtmlDumpService
                 sb.AppendLine("</div>");
             }
             sb.AppendLine("</div>");
+            
+            // Hidden sections for transport event entries
+            foreach (var group in result.TransportEventGroups)
+            {
+                var groupId = GetSafeId($"transport-{group.Status}");
+                sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
+                sb.AppendLine($"<h2>📋 Entries for: {group.Status}</h2>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
+                sb.AppendLine("</div>");
+            }
         }
         
         // JSON Modal
@@ -280,6 +317,44 @@ public class HtmlDumpService
             sb.AppendLine($"<td><span class='number'>{bucket.MinNWCount:N0}</span></td>");
             sb.AppendLine($"<td><span class='number'>{bucket.MaxNWCount:N0}</span></td>");
             sb.AppendLine($"<td><span class='number'>{bucket.Count:N0}</span></td>");
+            sb.AppendLine("</tr>");
+        }
+        sb.AppendLine("</tbody>");
+        
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpGroupedResultTable(string title, List<GroupedResult> groups, string prefix)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine($"<div class='dump-header'>{title}</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th class='row-num'>#</th>");
+        sb.AppendLine("<th>Key</th>");
+        sb.AppendLine("<th>Count</th>");
+        sb.AppendLine("<th>Action</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        int rowNum = 0;
+        foreach (var group in groups)
+        {
+            rowNum++;
+            var groupId = GetSafeId($"{prefix}-{group.Key}");
+            sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")} clickable-row' onclick=\"showGroup('{groupId}')\">");
+            sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
+            sb.AppendLine($"<td><span class='string'>{System.Web.HttpUtility.HtmlEncode(group.Key)}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
+            sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
         }
         sb.AppendLine("</tbody>");
@@ -503,6 +578,7 @@ summary:hover {
     color: #7ec8e3;
 }
 
+
 /* Responsive */
 @media (max-width: 768px) {
     body { padding: 10px; }
@@ -518,10 +594,51 @@ summary:hover {
     cursor: pointer;
 }
 
-
 .bucket-link:hover {
     color: #81d4fa;
     text-decoration: underline;
+}
+
+/* Clickable rows in GroupBy tables */
+.clickable-row {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.clickable-row:hover {
+    background: #094771 !important;
+}
+
+.btn-view {
+    background: #0e639c;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.btn-view:hover {
+    background: #1177bb;
+}
+
+/* Clickable header for transport events */
+.clickable-header {
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.clickable-header:hover {
+    color: #4fc3f7;
+}
+
+.click-hint {
+    font-size: 12px;
+    color: #6a9955;
+    font-weight: normal;
+    margin-left: 10px;
 }
 
 /* Collapsible section header */
@@ -796,6 +913,21 @@ function showBucket(bucketId) {
     if (bucketEl) {
         bucketEl.style.display = 'block';
         bucketEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+// Show group details (for GroupBy sections)
+function showGroup(groupId) {
+    // Hide all bucket details first
+    document.querySelectorAll('.bucket-details').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Show the selected group
+    const groupEl = document.getElementById('group-' + groupId);
+    if (groupEl) {
+        groupEl.style.display = 'block';
+        groupEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 }
 

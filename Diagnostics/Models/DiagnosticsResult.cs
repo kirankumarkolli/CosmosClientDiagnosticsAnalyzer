@@ -62,12 +62,24 @@ public class NetworkInteraction
     public string? ReplicaId { get; set; }
     public string? TenantId { get; set; }
     public string? StorePhysicalAddress { get; set; }
+    public string? RawJson { get; set; }
 }
 
 public class GroupedResult
 {
     public string? Key { get; set; }
     public int Count { get; set; }
+    public List<GroupedEntry> Entries { get; set; } = new();
+}
+
+public class GroupedEntry
+{
+    public double DurationInMs { get; set; }
+    public string? StatusCode { get; set; }
+    public string? SubStatusCode { get; set; }
+    public string? ResourceType { get; set; }
+    public string? OperationType { get; set; }
+    public string? RawJson { get; set; }
 }
 
 public class TransportEventGroup
@@ -75,6 +87,7 @@ public class TransportEventGroup
     public TransportEvents Status { get; set; }
     public int Count { get; set; }
     public List<PhaseDetail> PhaseDetails { get; set; } = new();
+    public List<GroupedEntry> Entries { get; set; } = new();
 }
 
 public class PhaseDetail

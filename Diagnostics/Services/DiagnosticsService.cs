@@ -89,44 +89,44 @@ public class DiagnosticsService
         // Filter to target operation
         var targetDiagnostics = diagnostics.Where(e => e.Diag.Name == highCountOpName).ToArray();
 
-        // Store response statistics
+        // Store response statistics with raw JSON
         var storeResponseStatistics = targetDiagnostics
             .Where(e => e.Diag.Recursive() != null)
-            .SelectMany(e => e.Diag.Recursive())
-            .Select(e => e.Data?.ClientSideRequestStats)
-            .Select(e => e?.StoreResponseStatistics)
-            .Where(e => e != null)
-            .SelectMany(e => e!)
-            .Where(e => e.StoreResult != null)
+            .SelectMany(e => e.Diag.Recursive().Select(r => new { Response = r, RawJson = e.RawJson }))
+            .Select(e => new { Stats = e.Response.Data?.ClientSideRequestStats, e.RawJson })
+            .Where(e => e.Stats?.StoreResponseStatistics != null)
+            .SelectMany(e => e.Stats!.StoreResponseStatistics!.Select(s => new { Store = s, e.RawJson }))
+            .Where(e => e.Store.StoreResult != null)
             .ToList();
 
         var nwInteractions = storeResponseStatistics
-            .Where(e => e.StoreResult?.StorePhysicalAddress != null)
+            .Where(e => e.Store.StoreResult?.StorePhysicalAddress != null)
             .Select(e => new NetworkInteraction
             {
-                ResourceType = e.ResourceType,
-                OperationType = e.OperationType,
-                StatusCode = e.StoreResult!.StatusCode,
-                SubStatusCode = e.StoreResult.SubStatusCode,
-                DurationInMs = e.DurationInMs,
-                Created = e.StoreResult.TransportRequestTimeline?.Created,
-                ChannelAcquisitionStarted = e.StoreResult.TransportRequestTimeline?.ChannelAcquisitionStarted,
-                Pipelined = e.StoreResult.TransportRequestTimeline?.Pipelined,
-                TransitTime = e.StoreResult.TransportRequestTimeline?.TransitTime,
-                Received = e.StoreResult.TransportRequestTimeline?.Received,
-                Completed = e.StoreResult.TransportRequestTimeline?.Completed,
-                BELatencyInMs = e.StoreResult.BELatencyInMs,
-                InflightRequests = e.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.inflightRequests,
-                OpenConnections = e.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.openConnections,
-                CallsPendingReceive = e.StoreResult.TransportRequestTimeline?.connectionStats?.callsPendingReceive,
-                WaitForConnectionInit = e.StoreResult.TransportRequestTimeline?.connectionStats?.waitforConnectionInit,
-                LastEvent = e.StoreResult.TransportRequestTimeline?.GetLastEvent(),
-                BottleneckEventName = e.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.Name,
-                BottleneckEventDuration = e.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.DurationInMs,
-                PartitionId = e.StoreResult.PartitionId,
-                ReplicaId = e.StoreResult.ReplicaId,
-                TenantId = e.StoreResult.TenantId,
-                StorePhysicalAddress = e.StoreResult.StorePhysicalAddress
+                ResourceType = e.Store.ResourceType,
+                OperationType = e.Store.OperationType,
+                StatusCode = e.Store.StoreResult!.StatusCode,
+                SubStatusCode = e.Store.StoreResult.SubStatusCode,
+                DurationInMs = e.Store.DurationInMs,
+                Created = e.Store.StoreResult.TransportRequestTimeline?.Created,
+                ChannelAcquisitionStarted = e.Store.StoreResult.TransportRequestTimeline?.ChannelAcquisitionStarted,
+                Pipelined = e.Store.StoreResult.TransportRequestTimeline?.Pipelined,
+                TransitTime = e.Store.StoreResult.TransportRequestTimeline?.TransitTime,
+                Received = e.Store.StoreResult.TransportRequestTimeline?.Received,
+                Completed = e.Store.StoreResult.TransportRequestTimeline?.Completed,
+                BELatencyInMs = e.Store.StoreResult.BELatencyInMs,
+                InflightRequests = e.Store.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.inflightRequests,
+                OpenConnections = e.Store.StoreResult.TransportRequestTimeline?.serviceEndpointStats?.openConnections,
+                CallsPendingReceive = e.Store.StoreResult.TransportRequestTimeline?.connectionStats?.callsPendingReceive,
+                WaitForConnectionInit = e.Store.StoreResult.TransportRequestTimeline?.connectionStats?.waitforConnectionInit,
+                LastEvent = e.Store.StoreResult.TransportRequestTimeline?.GetLastEvent(),
+                BottleneckEventName = e.Store.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.Name,
+                BottleneckEventDuration = e.Store.StoreResult.TransportRequestTimeline?.GetBottleneckEvent()?.DurationInMs,
+                PartitionId = e.Store.StoreResult.PartitionId,
+                ReplicaId = e.Store.StoreResult.ReplicaId,
+                TenantId = e.Store.StoreResult.TenantId,
+                StorePhysicalAddress = e.Store.StoreResult.StorePhysicalAddress,
+                RawJson = e.RawJson
             })
             .ToList();
 
@@ -140,14 +140,46 @@ public class DiagnosticsService
         // Group by Resource Type -> Operation Type
         result.ResourceTypeGroups = highLatencyNWInteractions
             .GroupBy(e => $"{e.ResourceType} -> {e.OperationType}")
-            .Select(e => new GroupedResult { Key = e.Key, Count = e.Count() })
+            .Select(e => new GroupedResult 
+            { 
+                Key = e.Key, 
+                Count = e.Count(),
+                Entries = e.OrderByDescending(x => x.DurationInMs)
+                    .Take(50)
+                    .Select(x => new GroupedEntry
+                    {
+                        DurationInMs = x.DurationInMs,
+                        StatusCode = x.StatusCode,
+                        SubStatusCode = x.SubStatusCode,
+                        ResourceType = x.ResourceType,
+                        OperationType = x.OperationType,
+                        RawJson = x.RawJson
+                    })
+                    .ToList()
+            })
             .OrderByDescending(e => e.Count)
             .ToList();
 
         // Group by Status Code -> Sub Status Code
         result.StatusCodeGroups = highLatencyNWInteractions
             .GroupBy(e => $"{e.StatusCode} -> {e.SubStatusCode}")
-            .Select(e => new GroupedResult { Key = e.Key, Count = e.Count() })
+            .Select(e => new GroupedResult 
+            { 
+                Key = e.Key, 
+                Count = e.Count(),
+                Entries = e.OrderByDescending(x => x.DurationInMs)
+                    .Take(50)
+                    .Select(x => new GroupedEntry
+                    {
+                        DurationInMs = x.DurationInMs,
+                        StatusCode = x.StatusCode,
+                        SubStatusCode = x.SubStatusCode,
+                        ResourceType = x.ResourceType,
+                        OperationType = x.OperationType,
+                        RawJson = x.RawJson
+                    })
+                    .ToList()
+            })
             .OrderByDescending(e => e.Count)
             .ToList();
 
@@ -158,6 +190,18 @@ public class DiagnosticsService
             {
                 Status = e.Key,
                 Count = e.Count(),
+                Entries = e.OrderByDescending(x => x.DurationInMs)
+                    .Take(50)
+                    .Select(x => new GroupedEntry
+                    {
+                        DurationInMs = x.DurationInMs,
+                        StatusCode = x.StatusCode,
+                        SubStatusCode = x.SubStatusCode,
+                        ResourceType = x.ResourceType,
+                        OperationType = x.OperationType,
+                        RawJson = x.RawJson
+                    })
+                    .ToList(),
                 PhaseDetails = e.GroupBy(x => x.BottleneckEventName)
                     .Select(g => new PhaseDetail
                     {
