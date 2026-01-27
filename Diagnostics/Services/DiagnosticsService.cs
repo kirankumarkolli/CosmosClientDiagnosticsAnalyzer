@@ -213,10 +213,14 @@ public class DiagnosticsService
                             RawJson = x.RawJson
                         })
                         .ToList(),
-                    EntriesAtP50 = GetEntriesAtPercentile(items, p50, 50),
-                    EntriesAtP75 = GetEntriesAtPercentile(items, p75, 75),
-                    EntriesAtP90 = GetEntriesAtPercentile(items, p90, 90),
-                    EntriesAtP95 = GetEntriesAtPercentile(items, p95, 95)
+                    // P50: values ? P50
+                    EntriesAtP50 = GetEntriesInPercentileRange(items, null, p50),
+                    // P75: values > P50 and ? P75
+                    EntriesAtP75 = GetEntriesInPercentileRange(items, p50, p75),
+                    // P90: values > P75 and ? P90
+                    EntriesAtP90 = GetEntriesInPercentileRange(items, p75, p90),
+                    // P95: values > P90 and ? P95
+                    EntriesAtP95 = GetEntriesInPercentileRange(items, p90, p95)
                 };
             })
             .OrderByDescending(e => e.Count)
@@ -254,10 +258,14 @@ public class DiagnosticsService
                             RawJson = x.RawJson
                         })
                         .ToList(),
-                    EntriesAtP50 = GetEntriesAtPercentile(items, p50, 50),
-                    EntriesAtP75 = GetEntriesAtPercentile(items, p75, 75),
-                    EntriesAtP90 = GetEntriesAtPercentile(items, p90, 90),
-                    EntriesAtP95 = GetEntriesAtPercentile(items, p95, 95)
+                    // P50: values ? P50
+                    EntriesAtP50 = GetEntriesInPercentileRange(items, null, p50),
+                    // P75: values > P50 and ? P75
+                    EntriesAtP75 = GetEntriesInPercentileRange(items, p50, p75),
+                    // P90: values > P75 and ? P90
+                    EntriesAtP90 = GetEntriesInPercentileRange(items, p75, p90),
+                    // P95: values > P90 and ? P95
+                    EntriesAtP95 = GetEntriesInPercentileRange(items, p90, p95)
                 };
             })
             .OrderByDescending(e => e.Count)
@@ -297,10 +305,14 @@ public class DiagnosticsService
                             RawJson = x.RawJson
                         })
                         .ToList(),
-                    EntriesAtP50 = GetEntriesAtPercentile(items, p50, 50),
-                    EntriesAtP75 = GetEntriesAtPercentile(items, p75, 75),
-                    EntriesAtP90 = GetEntriesAtPercentile(items, p90, 90),
-                    EntriesAtP95 = GetEntriesAtPercentile(items, p95, 95)
+                    // P50: values ? P50
+                    EntriesAtP50 = GetEntriesInPercentileRange(items, null, p50),
+                    // P75: values > P50 and ? P75
+                    EntriesAtP75 = GetEntriesInPercentileRange(items, p50, p75),
+                    // P90: values > P75 and ? P90
+                    EntriesAtP90 = GetEntriesInPercentileRange(items, p75, p90),
+                    // P95: values > P90 and ? P95
+                    EntriesAtP95 = GetEntriesInPercentileRange(items, p90, p95)
                 };
             })
             .OrderByDescending(e => e.Count)
@@ -339,10 +351,14 @@ public class DiagnosticsService
                             RawJson = x.RawJson
                         })
                         .ToList(),
-                    EntriesAtP50 = GetEntriesAtPercentile(items, p50, 50),
-                    EntriesAtP75 = GetEntriesAtPercentile(items, p75, 75),
-                    EntriesAtP90 = GetEntriesAtPercentile(items, p90, 90),
-                    EntriesAtP95 = GetEntriesAtPercentile(items, p95, 95),
+                    // P50: values ? P50
+                    EntriesAtP50 = GetEntriesInPercentileRange(items, null, p50),
+                    // P75: values > P50 and ? P75
+                    EntriesAtP75 = GetEntriesInPercentileRange(items, p50, p75),
+                    // P90: values > P75 and ? P90
+                    EntriesAtP90 = GetEntriesInPercentileRange(items, p75, p90),
+                    // P95: values > P90 and ? P95
+                    EntriesAtP95 = GetEntriesInPercentileRange(items, p90, p95),
                     PhaseDetails = e.GroupBy(x => x.BottleneckEventName)
                         .Select(g => new PhaseDetail
                         {
@@ -407,32 +423,29 @@ public class DiagnosticsService
     }
 
 
+
+
     /// <summary>
-    /// Get entries closest to a specific percentile value
-    /// For P50: entries around median, P90: entries around 90th percentile, etc.
+    /// Get entries within a percentile range (exclusive lower bound, inclusive upper bound)
+    /// P50: values ? P50 (lowerBound = null)
+    /// P75: values > P50 and ? P75
+    /// P90: values > P75 and ? P90
+    /// P95: values > P90 and ? P95
     /// </summary>
-    private static List<GroupedEntry> GetEntriesAtPercentile(IEnumerable<NetworkInteraction> items, double percentileValue, double percentile, int maxEntries = 20)
+    private static List<GroupedEntry> GetEntriesInPercentileRange(IEnumerable<NetworkInteraction> items, double? lowerBound, double upperBound, int maxEntries = 50)
     {
-        var sortedItems = items.OrderBy(x => x.DurationInMs).ToList();
-        if (!sortedItems.Any()) return new List<GroupedEntry>();
-
-        // Calculate the index range for this percentile
-        // For P50, get entries around index 50% of the list
-        // For P90, get entries around index 90% of the list
-        int totalCount = sortedItems.Count;
-        int targetIndex = (int)Math.Floor((percentile / 100.0) * (totalCount - 1));
+        var query = items.AsEnumerable();
         
-        // Get entries around the target index (±10% of list size, min 5 entries each side)
-        int range = Math.Max(5, totalCount / 10);
-        int startIndex = Math.Max(0, targetIndex - range);
-        int endIndex = Math.Min(totalCount - 1, targetIndex + range);
+        if (lowerBound.HasValue)
+        {
+            query = query.Where(x => x.DurationInMs > lowerBound.Value);
+        }
+        
+        query = query.Where(x => x.DurationInMs <= upperBound);
 
-        return sortedItems
-            .Skip(startIndex)
-            .Take(endIndex - startIndex + 1)
-            .OrderBy(x => Math.Abs(x.DurationInMs - percentileValue)) // Order by closeness to percentile value
+        return query
+            .OrderByDescending(x => x.DurationInMs)
             .Take(maxEntries)
-            .OrderByDescending(x => x.DurationInMs) // Then order by duration for display
             .Select(x => new GroupedEntry
             {
                 DurationInMs = x.DurationInMs,

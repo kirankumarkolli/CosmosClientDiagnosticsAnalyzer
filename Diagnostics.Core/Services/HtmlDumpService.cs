@@ -82,7 +82,7 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>📁 GroupBy {ResourceType → OperationType}</h2>");
-            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries at that level</p>");
+            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries in that range</p>");
             sb.AppendLine(DumpGroupedResultTable("Resource Type Groups", result.ResourceTypeGroups, "resourceType"));
             sb.AppendLine("</div>");
             
@@ -96,11 +96,15 @@ public class HtmlDumpService
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
                 
-                // Hidden sections for percentile entries
-                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P50", group.P50, group.EntriesAtP50));
-                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P75", group.P75, group.EntriesAtP75));
-                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P90", group.P90, group.EntriesAtP90));
-                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P95", group.P95, group.EntriesAtP95));
+                // Hidden sections for percentile entries with proper ranges
+                // P50: values ≤ P50
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P50", group.P50, null, group.EntriesAtP50));
+                // P75: values > P50 and ≤ P75
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P75", group.P75, group.P50, group.EntriesAtP75));
+                // P90: values > P75 and ≤ P90
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P90", group.P90, group.P75, group.EntriesAtP90));
+                // P95: values > P90 and ≤ P95
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P95", group.P95, group.P90, group.EntriesAtP95));
             }
         }
         
@@ -109,7 +113,7 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>🔢 GroupBy {StatusCode → SubStatusCode}</h2>");
-            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries at that level</p>");
+            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries in that range</p>");
             sb.AppendLine(DumpGroupedResultTable("Status Code Groups", result.StatusCodeGroups, "statusCode"));
             sb.AppendLine("</div>");
             
@@ -124,11 +128,15 @@ public class HtmlDumpService
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
                 
-                // Hidden sections for percentile entries
-                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P50", group.P50, group.EntriesAtP50));
-                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P75", group.P75, group.EntriesAtP75));
-                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P90", group.P90, group.EntriesAtP90));
-                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P95", group.P95, group.EntriesAtP95));
+                // Hidden sections for percentile entries with proper ranges
+                // P50: values ≤ P50
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P50", group.P50, null, group.EntriesAtP50));
+                // P75: values > P50 and ≤ P75
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P75", group.P75, group.P50, group.EntriesAtP75));
+                // P90: values > P75 and ≤ P90
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P90", group.P90, group.P75, group.EntriesAtP90));
+                // P95: values > P90 and ≤ P95
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P95", group.P95, group.P90, group.EntriesAtP95));
             }
         }
         
@@ -567,7 +575,7 @@ public class HtmlDumpService
         return sb.ToString();
     }
 
-    private string CreatePercentileSection(GroupedResult group, string prefix, string percentileName, double percentileValue, List<GroupedEntry> entries)
+    private string CreatePercentileSection(GroupedResult group, string prefix, string percentileName, double percentileValue, double? lowerBound, List<GroupedEntry> entries)
     {
         if (!entries.Any()) return string.Empty;
         
@@ -575,9 +583,15 @@ public class HtmlDumpService
         var percentileId = GetSafeId($"{prefix}-{group.Key}-{percentileName.ToLower()}");
         sb.AppendLine($"<div id='group-{percentileId}' class='section bucket-details' style='display:none;'>");
         sb.AppendLine($"<h2>📊 {percentileName} Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
-        sb.AppendLine($"<p class='percentile-info'>Showing entries around {percentileName} ({percentileValue:F2}ms) ± 5%</p>");
+        
+        // Show the range description
+        string rangeDescription = lowerBound.HasValue 
+            ? $"Showing entries where duration > {lowerBound.Value:F2}ms and ≤ {percentileValue:F2}ms"
+            : $"Showing entries where duration ≤ {percentileValue:F2}ms";
+        sb.AppendLine($"<p class='percentile-info'>{rangeDescription}</p>");
+        
         sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{percentileId}').style.display='none'\">✕ Close</button>");
-        sb.AppendLine(DumpTable($"Showing {entries.Count} entries at {percentileName}", entries, sortable: true, tableId: $"percentile-table-{percentileId}"));
+        sb.AppendLine(DumpTable($"Showing {entries.Count} entries in {percentileName} range", entries, sortable: true, tableId: $"percentile-table-{percentileId}"));
         sb.AppendLine("</div>");
         return sb.ToString();
     }
