@@ -92,6 +92,13 @@ function formatFileSize(bytes) {
 async function analyzeFile() {
     if (!selectedFile) return;
     
+    // Show loading state on button
+    const btnText = analyzeBtn.querySelector('.btn-text');
+    const btnLoading = analyzeBtn.querySelector('.btn-loading');
+    if (btnText) btnText.hidden = true;
+    if (btnLoading) btnLoading.hidden = false;
+    analyzeBtn.disabled = true;
+    
     // Show progress
     showSection('progress');
     updateProgress('Reading file...', 5);
@@ -100,6 +107,9 @@ async function analyzeFile() {
         // Read file
         const content = await readFile(selectedFile);
         updateProgress('Parsing diagnostics...', 10);
+        
+        // Allow UI to update
+        await sleep(50);
         
         // Parse
         const parser = new DiagnosticsParser();
@@ -111,6 +121,9 @@ async function analyzeFile() {
         
         // Generate HTML
         updateProgress('Generating report...', 95);
+        await sleep(50);
+        
+        
         const generator = new HtmlGenerator();
         const html = generator.generateHtml(currentResult);
         
@@ -124,7 +137,18 @@ async function analyzeFile() {
     } catch (error) {
         console.error('Analysis error:', error);
         showError(error.message || 'An error occurred while analyzing the file');
+    } finally {
+        // Reset button state
+        const btnText = analyzeBtn.querySelector('.btn-text');
+        const btnLoading = analyzeBtn.querySelector('.btn-loading');
+        if (btnText) btnText.hidden = false;
+        if (btnLoading) btnLoading.hidden = true;
+        analyzeBtn.disabled = false;
     }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 function readFile(file) {
