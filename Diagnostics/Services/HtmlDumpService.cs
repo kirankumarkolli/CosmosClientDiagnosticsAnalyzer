@@ -137,8 +137,8 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>⚠️ GroupBy TransportException</h2>");
-            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries at that level</p>");
-            sb.AppendLine(DumpGroupedResultTable("Transport Exception Groups", result.TransportExceptionGroups, "transportException"));
+            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine(DumpTransportExceptionTable("Transport Exception Groups", result.TransportExceptionGroups));
             sb.AppendLine("</div>");
             
             // Hidden sections for each group's entries
@@ -150,12 +150,6 @@ public class HtmlDumpService
                 sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
-                
-                // Hidden sections for percentile entries
-                sb.AppendLine(CreatePercentileSection(group, "transportException", "P50", group.P50, group.EntriesAtP50));
-                sb.AppendLine(CreatePercentileSection(group, "transportException", "P75", group.P75, group.EntriesAtP75));
-                sb.AppendLine(CreatePercentileSection(group, "transportException", "P90", group.P90, group.EntriesAtP90));
-                sb.AppendLine(CreatePercentileSection(group, "transportException", "P95", group.P95, group.EntriesAtP95));
             }
         }
         
@@ -428,6 +422,44 @@ public class HtmlDumpService
             sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p90Id}')\"><span class='number percentile-link'>{group.P90:F2}</span></td>");
             sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p95Id}')\"><span class='number percentile-link'>{group.P95:F2}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Max:F2}</span></td>");
+            sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
+            sb.AppendLine("</tr>");
+        }
+        sb.AppendLine("</tbody>");
+        
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpTransportExceptionTable(string title, List<GroupedResult> groups)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine($"<div class='dump-header'>{title}</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header (without percentiles)
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th class='row-num'>#</th>");
+        sb.AppendLine("<th>Exception Message</th>");
+        sb.AppendLine("<th>Count</th>");
+        sb.AppendLine("<th>Action</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        int rowNum = 0;
+        foreach (var group in groups)
+        {
+            rowNum++;
+            var groupId = GetSafeId($"transportException-{group.Key}");
+            sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")} clickable-row' onclick=\"showGroup('{groupId}')\">");
+            sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
+            sb.AppendLine($"<td><span class='string'>{System.Web.HttpUtility.HtmlEncode(group.Key)}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
             sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
         }
