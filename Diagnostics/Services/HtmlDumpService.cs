@@ -53,7 +53,7 @@ public class HtmlDumpService
                 sb.AppendLine($"<div id='bucket-{bucketId}' class='section bucket-details' style='display:none;'>");
                 sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(bucket.Bucket)}</h2>");
                 sb.AppendLine("<p class='note'>Click on column headers to sort</p>");
-                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('bucket-{bucketId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('bucket-{bucketId}')\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {bucketEntries.Count} of {bucket.Count} entries", bucketEntries, sortable: true, tableId: $"bucket-table-{bucketId}"));
                 sb.AppendLine("</div>");
             }
@@ -92,7 +92,7 @@ public class HtmlDumpService
                 var groupId = GetSafeId($"resourceType-{group.Key}");
                 sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
                 sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
-                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{groupId}')\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
                 
@@ -118,13 +118,14 @@ public class HtmlDumpService
             sb.AppendLine("</div>");
             
             
+            
             // Hidden sections for each group's entries
             foreach (var group in result.StatusCodeGroups)
             {
                 var groupId = GetSafeId($"statusCode-{group.Key}");
                 sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
                 sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
-                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{groupId}')\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
                 
@@ -155,7 +156,7 @@ public class HtmlDumpService
                 var groupId = GetSafeId($"transportException-{group.Key}");
                 sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
                 sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
-                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{groupId}')\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
             }
@@ -196,7 +197,7 @@ public class HtmlDumpService
                     var phaseId = GetSafeId($"phase-{group.Status}-{phase.Phase}");
                     sb.AppendLine($"<div id='group-{phaseId}' class='section bucket-details' style='display:none;'>");
                     sb.AppendLine($"<h2>📋 Entries for Phase: {phase.Phase ?? "Unknown"}</h2>");
-                    sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{phaseId}').style.display='none'\">✕ Close</button>");
+                    sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{phaseId}')\">✕ Close</button>");
                     sb.AppendLine(DumpTable($"Showing {phase.Entries.Count} of {phase.Count} entries", phase.Entries, sortable: true, tableId: $"phase-table-{phaseId}"));
                     sb.AppendLine("</div>");
                 }
@@ -209,7 +210,7 @@ public class HtmlDumpService
                 var groupId = GetSafeId($"transport-{group.Status}");
                 sb.AppendLine($"<div id='group-{groupId}' class='section bucket-details' style='display:none;'>");
                 sb.AppendLine($"<h2>📋 Entries for: {group.Status}</h2>");
-                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{groupId}')\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
             }
@@ -572,6 +573,7 @@ public class HtmlDumpService
         sb.AppendLine("</table>");
         sb.AppendLine("</div>");
         
+        
         return sb.ToString();
     }
 
@@ -590,7 +592,7 @@ public class HtmlDumpService
             : $"Showing entries where duration ≤ {percentileValue:F2}ms";
         sb.AppendLine($"<p class='percentile-info'>{rangeDescription}</p>");
         
-        sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{percentileId}').style.display='none'\">✕ Close</button>");
+        sb.AppendLine($"<button class='btn-close' onclick=\"closeDrillDown('group-{percentileId}')\">✕ Close</button>");
         sb.AppendLine(DumpTable($"Showing {entries.Count} entries in {percentileName} range", entries, sortable: true, tableId: $"percentile-table-{percentileId}"));
         sb.AppendLine("</div>");
         return sb.ToString();
@@ -1126,6 +1128,9 @@ summary:hover {
     {
         return @"
 <script>
+// Store the scroll position before opening a drill-down
+let savedScrollPosition = 0;
+
 // Add click-to-copy for cell values (excluding links)
 document.querySelectorAll('.dump-table td').forEach(cell => {
     if (!cell.querySelector('a')) {
@@ -1160,6 +1165,9 @@ function toggleSection(sectionId) {
 
 // Show bucket details
 function showBucket(bucketId) {
+    // Save current scroll position
+    savedScrollPosition = window.scrollY;
+    
     // Hide all bucket details first
     document.querySelectorAll('.bucket-details').forEach(el => {
         el.style.display = 'none';
@@ -1175,6 +1183,9 @@ function showBucket(bucketId) {
 
 // Show group details (for GroupBy sections)
 function showGroup(groupId) {
+    // Save current scroll position
+    savedScrollPosition = window.scrollY;
+    
     // Hide all bucket details first
     document.querySelectorAll('.bucket-details').forEach(el => {
         el.style.display = 'none';
@@ -1186,6 +1197,16 @@ function showGroup(groupId) {
         groupEl.style.display = 'block';
         groupEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+}
+
+// Close drill-down and restore scroll position
+function closeDrillDown(elementId) {
+    const el = document.getElementById(elementId);
+    if (el) {
+        el.style.display = 'none';
+    }
+    // Restore scroll position
+    window.scrollTo({ top: savedScrollPosition, behavior: 'smooth' });
 }
 
 // Table sorting
