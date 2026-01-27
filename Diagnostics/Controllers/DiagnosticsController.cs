@@ -1,5 +1,6 @@
 using Diagnostics.Services;
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
 
 namespace Diagnostics.Controllers;
 
@@ -38,7 +39,7 @@ public class DiagnosticsController : ControllerBase
         var result = _diagnosticsService.AnalyzeDiagnostics(content, latencyThreshold);
         var html = _htmlDumpService.GenerateHtml(result);
 
-        return Content(html, "text/html");
+        return Content(html, "text/html; charset=utf-8", Encoding.UTF8);
     }
 
     /// <summary>

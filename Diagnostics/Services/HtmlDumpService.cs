@@ -13,6 +13,8 @@ public class HtmlDumpService
         
         sb.AppendLine("<!DOCTYPE html>");
         sb.AppendLine("<html><head>");
+        sb.AppendLine("<meta charset=\"UTF-8\">");
+        sb.AppendLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">");
         sb.AppendLine("<title>Cosmos Diagnostics Analysis</title>");
         sb.AppendLine(GetStyles());
         sb.AppendLine("</head><body>");
