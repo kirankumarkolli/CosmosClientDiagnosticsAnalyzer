@@ -219,6 +219,18 @@ public class DiagnosticsService
                             .Select(y => new EndpointCount { Endpoint = y.Key, Count = y.Count() })
                             .OrderByDescending(y => y.Count)
                             .Take(10)
+                            .ToList(),
+                        Entries = g.OrderByDescending(y => y.DurationInMs)
+                            .Take(50)
+                            .Select(y => new GroupedEntry
+                            {
+                                DurationInMs = y.DurationInMs,
+                                StatusCode = y.StatusCode,
+                                SubStatusCode = y.SubStatusCode,
+                                ResourceType = y.ResourceType,
+                                OperationType = y.OperationType,
+                                RawJson = y.RawJson
+                            })
                             .ToList()
                     })
                     .ToList()

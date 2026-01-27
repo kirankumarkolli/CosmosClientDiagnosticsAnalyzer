@@ -132,14 +132,7 @@ public class HtmlDumpService
                 sb.AppendLine($"<h3 class='clickable-header' onclick=\"showGroup('{groupId}')\">{group.Status} ({group.Count} items) <span class='click-hint'>👆 click to view entries</span></h3>");
                 if (group.PhaseDetails.Any())
                 {
-                    sb.AppendLine(DumpTable($"Phase Details", group.PhaseDetails.Select(p => new
-                    {
-                        p.Phase,
-                        p.Count,
-                        p.MinDuration,
-                        p.MaxDuration,
-                        p.EndpointCount
-                    })));
+                    sb.AppendLine(DumpPhaseDetailsTable("Phase Details", group.PhaseDetails, group.Status.ToString()));
                     
                     // Show top endpoints for each phase
                     foreach (var phase in group.PhaseDetails.Where(p => p.Top10Endpoints.Any()))
@@ -150,6 +143,17 @@ public class HtmlDumpService
                     }
                 }
                 sb.AppendLine("</div>");
+                
+                // Hidden sections for phase entries
+                foreach (var phase in group.PhaseDetails.Where(p => p.Entries.Any()))
+                {
+                    var phaseId = GetSafeId($"phase-{group.Status}-{phase.Phase}");
+                    sb.AppendLine($"<div id='group-{phaseId}' class='section bucket-details' style='display:none;'>");
+                    sb.AppendLine($"<h2>📋 Entries for Phase: {phase.Phase ?? "Unknown"}</h2>");
+                    sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{phaseId}').style.display='none'\">✕ Close</button>");
+                    sb.AppendLine(DumpTable($"Showing {phase.Entries.Count} of {phase.Count} entries", phase.Entries, sortable: true, tableId: $"phase-table-{phaseId}"));
+                    sb.AppendLine("</div>");
+                }
             }
             sb.AppendLine("</div>");
             
@@ -355,6 +359,50 @@ public class HtmlDumpService
             sb.AppendLine($"<td><span class='string'>{System.Web.HttpUtility.HtmlEncode(group.Key)}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
             sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
+            sb.AppendLine("</tr>");
+        }
+        sb.AppendLine("</tbody>");
+        
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpPhaseDetailsTable(string title, List<PhaseDetail> phases, string transportEvent)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine($"<div class='dump-header'>{title}</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th class='row-num'>#</th>");
+        sb.AppendLine("<th>Phase</th>");
+        sb.AppendLine("<th>Count</th>");
+        sb.AppendLine("<th>Min Duration</th>");
+        sb.AppendLine("<th>Max Duration</th>");
+        sb.AppendLine("<th>Endpoint Count</th>");
+        sb.AppendLine("<th>Action</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        int rowNum = 0;
+        foreach (var phase in phases)
+        {
+            rowNum++;
+            var phaseId = GetSafeId($"phase-{transportEvent}-{phase.Phase}");
+            sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")} clickable-row' onclick=\"showGroup('{phaseId}')\">");
+            sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
+            sb.AppendLine($"<td><span class='string'>{System.Web.HttpUtility.HtmlEncode(phase.Phase)}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{phase.Count:N0}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{phase.MinDuration:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{phase.MaxDuration:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{phase.EndpointCount:N0}</span></td>");
+            sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{phaseId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
         }
         sb.AppendLine("</tbody>");

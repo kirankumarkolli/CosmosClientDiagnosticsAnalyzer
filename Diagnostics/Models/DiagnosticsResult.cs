@@ -100,6 +100,7 @@ public class PhaseDetail
     public DateTime? MaxStartTime { get; set; }
     public int EndpointCount { get; set; }
     public List<EndpointCount> Top10Endpoints { get; set; } = new();
+    public List<GroupedEntry> Entries { get; set; } = new();
 }
 
 public class EndpointCount
