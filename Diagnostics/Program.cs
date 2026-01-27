@@ -1,4 +1,7 @@
 ﻿using Diagnostics.Services;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.Identity.Web;
+using Microsoft.Identity.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,8 +11,26 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 100 * 1024 * 1024; // 100MB
 });
 
+// Add Microsoft Identity authentication (Microsoft employees only)
+builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApp(options =>
+    {
+        options.Instance = "https://login.microsoftonline.com/";
+        options.TenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47"; // Microsoft tenant ID
+        options.ClientId = builder.Configuration["AzureAd:ClientId"] ?? "YOUR_CLIENT_ID"; // Set in appsettings.json or environment variable
+        options.CallbackPath = "/signin-oidc";
+    });
+
+builder.Services.AddAuthorization(options =>
+{
+    // Require authenticated users by default
+    options.FallbackPolicy = options.DefaultPolicy;
+});
+
 // Add services
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews()
+    .AddMicrosoftIdentityUI();
+builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -35,10 +56,14 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
-app.MapControllers();
+app.UseAuthentication();
+app.UseAuthorization();
 
-// Serve upload page at root
-app.MapGet("/", () => Results.Content(GetUploadPage(), "text/html"));
+app.MapControllers();
+app.MapRazorPages();
+
+// Serve upload page at root (requires authentication)
+app.MapGet("/", () => Results.Content(GetUploadPage(), "text/html")).RequireAuthorization();
 
 app.Run();
 

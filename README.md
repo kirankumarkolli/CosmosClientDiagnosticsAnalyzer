@@ -254,6 +254,67 @@ curl -X POST "https://YOUR_FUNCTION_APP.azurewebsites.net/api/diagnostics/analyz
 
 ---
 
+## 🔐 Authentication Setup (Microsoft Employees Only)
+
+The application is configured to only allow Microsoft employees (microsoft.com tenant) to access it.
+
+### Step 1: Register an App in Azure AD
+
+1. Go to [Azure Portal](https://portal.azure.com) → **Azure Active Directory** → **App registrations**
+2. Click **New registration**
+3. Fill in:
+   - **Name**: `Cosmos Diagnostics Analyzer`
+   - **Supported account types**: `Accounts in this organizational directory only (Microsoft only - Single tenant)`
+   - **Redirect URI**: 
+     - Platform: `Web`
+     - URL: `https://YOUR_APP_URL/signin-oidc` (e.g., `https://localhost:5000/signin-oidc` for local dev)
+4. Click **Register**
+5. Copy the **Application (client) ID** - you'll need this
+
+### Step 2: Configure the Application
+
+#### For Web API (Diagnostics project)
+
+Update `appsettings.json`:
+
+```json
+{
+  "AzureAd": {
+    "Instance": "https://login.microsoftonline.com/",
+    "TenantId": "72f988bf-86f1-41af-91ab-2d7cd011db47",
+    "ClientId": "YOUR_CLIENT_ID_HERE",
+    "CallbackPath": "/signin-oidc"
+  }
+}
+```
+
+Or set environment variable:
+```bash
+export AzureAd__ClientId="YOUR_CLIENT_ID_HERE"
+```
+
+#### For Azure Functions (EasyAuth)
+
+1. Go to your Function App in Azure Portal
+2. Navigate to **Authentication** (left menu)
+3. Click **Add identity provider**
+4. Select **Microsoft**
+5. Configure:
+   - **App registration type**: `Pick an existing app registration in this directory`
+   - **App registration**: Select or enter your app registration
+   - **Tenant type**: `Workforce`
+   - **Restrict access**: `Require authentication`
+   - **Unauthenticated requests**: `HTTP 401 Unauthorized`
+6. Click **Add**
+
+### Step 3: Add Redirect URIs
+
+In your App Registration → **Authentication** → **Redirect URIs**, add:
+- `https://YOUR_APP_URL/signin-oidc` (Web API)
+- `https://YOUR_FUNCTION_APP.azurewebsites.net/.auth/login/aad/callback` (Azure Functions)
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -264,6 +325,8 @@ curl -X POST "https://YOUR_FUNCTION_APP.azurewebsites.net/api/diagnostics/analyz
 | Build fails on GitHub | Ensure .NET 8 SDK is used in workflow |
 | 401 Unauthorized on Azure | Check publish profile secret is correct |
 | Function timeout | Increase timeout in `host.json` or use Premium plan for large files |
+| Authentication redirect loop | Ensure Redirect URI matches exactly in Azure AD app registration |
+| "AADSTS50011" error | Add the correct redirect URI to your app registration |
 
 ### Logs
 
