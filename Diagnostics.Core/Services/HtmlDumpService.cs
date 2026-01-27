@@ -33,6 +33,7 @@ public class HtmlDumpService
         }));
         sb.AppendLine("</div>");
         
+        
         // System Metrics Time Plot
         if (result.SystemMetrics != null && result.SystemMetrics.Snapshots.Any())
         {
@@ -44,6 +45,17 @@ public class HtmlDumpService
             sb.AppendLine("</div>");
         }
         
+        // Client Configuration Metrics Time Plot
+        if (result.ClientConfigMetrics != null && result.ClientConfigMetrics.Snapshots.Any())
+        {
+            sb.AppendLine("<div class='section'>");
+            sb.AppendLine("<h2>🖥️ Client Configuration Time Plot</h2>");
+            sb.AppendLine($"<p class='note'>Based on {result.ClientConfigMetrics.SampleCount} entries from {result.ClientConfigMetrics.StartTime:HH:mm:ss} to {result.ClientConfigMetrics.EndTime:HH:mm:ss}. {result.ClientConfigMetrics.UniqueMachineIds.Count} unique machine(s).</p>");
+            sb.AppendLine(DumpClientConfigTable(result.ClientConfigMetrics));
+            sb.AppendLine(DumpClientConfigChart(result.ClientConfigMetrics));
+            sb.AppendLine("</div>");
+        }
+        
         // Operation Buckets
         if (result.OperationBuckets.Any())
         {
@@ -52,6 +64,7 @@ public class HtmlDumpService
             sb.AppendLine("<p class='note'>Click on a bucket name to see related entries</p>");
             sb.AppendLine(DumpOperationBucketsTable(result.OperationBuckets));
             sb.AppendLine("</div>");
+            
             
             // Hidden sections for each bucket's entries
             foreach (var bucket in result.OperationBuckets)
@@ -462,6 +475,125 @@ public class HtmlDumpService
         {
             var comma = i < metrics.Snapshots.Count - 1 ? "," : "";
             sb.AppendLine($"    {{ dateUtc: '{snapshot.DateUtc:yyyy-MM-dd HH:mm:ss.fff}', cpu: {snapshot.Cpu.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, memory: {snapshot.Memory}, threadWait: {snapshot.ThreadWaitIntervalInMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, tcpConnections: {snapshot.NumberOfOpenTcpConnections}, isThreadStarving: {snapshot.IsThreadStarving.ToString().ToLower()}, availableThreads: {snapshot.AvailableThreads} }}{comma}");
+        }
+        sb.AppendLine("  ]");
+        sb.AppendLine("};");
+        sb.AppendLine("</script>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpClientConfigTable(ClientConfigTimePlot metrics)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine("<div class='dump-header'>Client Configuration Statistics</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th>Metric</th>");
+        sb.AppendLine("<th>Min</th>");
+        sb.AppendLine("<th>Avg</th>");
+        sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>Max</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        
+        // Processor Count row
+        sb.AppendLine("<tr class='odd'>");
+        sb.AppendLine("<td><span class='string'>Processor Count</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.Min:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.Avg:F1}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.Max:N0}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        // Clients Created row
+        sb.AppendLine("<tr class='even'>");
+        sb.AppendLine("<td><span class='string'>Clients Created</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.Min:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.Avg:F1}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.Max:N0}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        // Active Clients row
+        sb.AppendLine("<tr class='odd'>");
+        sb.AppendLine("<td><span class='string'>Active Clients</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.Min:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.Avg:F1}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.Max:N0}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        // Unique Machines row
+        sb.AppendLine("<tr class='even'>");
+        sb.AppendLine("<td><span class='string'>Unique Machines</span></td>");
+        sb.AppendLine($"<td colspan='4'><span class='number'>{metrics.UniqueMachineIds.Count}</span> machine(s)</td>");
+        sb.AppendLine("</tr>");
+        
+        sb.AppendLine("</tbody>");
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpClientConfigChart(ClientConfigTimePlot metrics)
+    {
+        var sb = new StringBuilder();
+        
+        // Metric selector with checkboxes for multi-select
+        sb.AppendLine("<div class='chart-controls'>");
+        sb.AppendLine("<span class='control-label'>Select Metrics:</span>");
+        sb.AppendLine("<div class='metric-checkboxes'>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkProcessorCount' checked onchange='updateClientConfigChart()'><span class='metric-color' style='background:#ff7043'></span>Processor Count</label>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkClientsCreated' onchange='updateClientConfigChart()'><span class='metric-color' style='background:#42a5f5'></span>Clients Created</label>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkActiveClients' onchange='updateClientConfigChart()'><span class='metric-color' style='background:#66bb6a'></span>Active Clients</label>");
+        sb.AppendLine("</div>");
+        sb.AppendLine("</div>");
+        
+        // Chart container
+        sb.AppendLine("<div class='chart-container'>");
+        sb.AppendLine("<canvas id='clientConfigChart'></canvas>");
+        sb.AppendLine("</div>");
+        
+        // Machine ID legend
+        if (metrics.UniqueMachineIds.Count > 1)
+        {
+            sb.AppendLine("<div class='machine-legend'>");
+            sb.AppendLine("<span class='control-label'>Machines:</span>");
+            foreach (var (machineId, index) in metrics.UniqueMachineIds.Select((m, i) => (m, i)))
+            {
+                var shortId = machineId.Length > 12 ? "..." + machineId.Substring(machineId.Length - 12) : machineId;
+                sb.AppendLine($"<span class='machine-tag' title='{System.Web.HttpUtility.HtmlEncode(machineId)}'>{shortId}</span>");
+            }
+            sb.AppendLine("</div>");
+        }
+        
+        // Selected point details
+        sb.AppendLine("<div id='clientPointDetails' class='point-details' style='display:none;'>");
+        sb.AppendLine("<h4>📍 Selected Point Details</h4>");
+        sb.AppendLine("<div id='clientPointDetailsContent'></div>");
+        sb.AppendLine("</div>");
+        
+        // Embed the data as JSON
+        sb.AppendLine("<script>");
+        sb.AppendLine("const clientConfigData = {");
+        sb.AppendLine($"  labels: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.DateUtc:HH:mm:ss}'"))}],");
+        sb.AppendLine($"  processorCount: [{string.Join(",", metrics.Snapshots.Select(s => s.ProcessorCount))}],");
+        sb.AppendLine($"  clientsCreated: [{string.Join(",", metrics.Snapshots.Select(s => s.NumberOfClientsCreated))}],");
+        sb.AppendLine($"  activeClients: [{string.Join(",", metrics.Snapshots.Select(s => s.NumberOfActiveClients))}],");
+        sb.AppendLine($"  machineIds: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.ShortMachineId}'"))}],");
+        sb.AppendLine("  details: [");
+        foreach (var (snapshot, i) in metrics.Snapshots.Select((s, i) => (s, i)))
+        {
+            var comma = i < metrics.Snapshots.Count - 1 ? "," : "";
+            sb.AppendLine($"    {{ dateUtc: '{snapshot.DateUtc:yyyy-MM-dd HH:mm:ss.fff}', machineId: '{snapshot.ShortMachineId}', fullMachineId: '{snapshot.MachineId}', processorCount: {snapshot.ProcessorCount}, clientsCreated: {snapshot.NumberOfClientsCreated}, activeClients: {snapshot.NumberOfActiveClients}, connectionMode: '{snapshot.ConnectionMode}' }}{comma}");
         }
         sb.AppendLine("  ]");
         sb.AppendLine("};");
@@ -1139,6 +1271,26 @@ summary:hover {
     padding: 20px;
     margin: 15px 0;
     height: 400px;
+}
+
+.machine-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin: 10px 0;
+    padding: 10px;
+    background: #2d2d30;
+    border-radius: 6px;
+}
+
+.machine-tag {
+    background: #3c3c3c;
+    color: #ff7043;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-family: monospace;
 }
 
 .point-details {
@@ -1843,9 +1995,180 @@ function showPointDetails(index) {
     detailsDiv.style.display = 'block';
 }
 
+// ===== Client Configuration Chart =====
+let clientConfigChart = null;
+
+function initClientConfigChart() {
+    if (typeof clientConfigData === 'undefined' || !document.getElementById('clientConfigChart')) return;
+    
+    const ctx = document.getElementById('clientConfigChart').getContext('2d');
+    
+    clientConfigChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: clientConfigData.labels,
+            datasets: []
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#dcdcdc' }
+                },
+                tooltip: {
+                    backgroundColor: '#2d2d30',
+                    titleColor: '#ff7043',
+                    bodyColor: '#dcdcdc',
+                    borderColor: '#ff7043',
+                    borderWidth: 1,
+                    callbacks: {
+                        afterBody: function(context) {
+                            const index = context[0].dataIndex;
+                            return 'Machine: ' + clientConfigData.machineIds[index];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#9cdcfe' },
+                    grid: { color: '#3e3e3e' },
+                    title: { display: true, text: 'Time', color: '#dcdcdc' }
+                },
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    ticks: { color: '#ff7043' },
+                    grid: { color: '#3e3e3e' },
+                    title: { display: true, text: 'Processor Count', color: '#ff7043' }
+                },
+                y1: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    ticks: { color: '#42a5f5' },
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Clients Created', color: '#42a5f5' }
+                },
+                y2: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    ticks: { color: '#66bb6a' },
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Active Clients', color: '#66bb6a' }
+                }
+            },
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    showClientPointDetails(index);
+                }
+            }
+        }
+    });
+    
+    updateClientConfigChart();
+}
+
+const clientMetricConfigs = {
+    processorCount: { data: 'processorCount', label: 'Processor Count', color: '#ff7043', yAxisID: 'y' },
+    clientsCreated: { data: 'clientsCreated', label: 'Clients Created', color: '#42a5f5', yAxisID: 'y1' },
+    activeClients: { data: 'activeClients', label: 'Active Clients', color: '#66bb6a', yAxisID: 'y2' }
+};
+
+function updateClientConfigChart() {
+    if (!clientConfigChart) return;
+    
+    const datasets = [];
+    const activeAxes = new Set();
+    
+    if (document.getElementById('chkProcessorCount').checked) {
+        datasets.push(createClientDataset('processorCount'));
+        activeAxes.add('y');
+    }
+    if (document.getElementById('chkClientsCreated').checked) {
+        datasets.push(createClientDataset('clientsCreated'));
+        activeAxes.add('y1');
+    }
+    if (document.getElementById('chkActiveClients').checked) {
+        datasets.push(createClientDataset('activeClients'));
+        activeAxes.add('y2');
+    }
+    
+    clientConfigChart.data.datasets = datasets;
+    
+    clientConfigChart.options.scales.y.display = activeAxes.has('y');
+    clientConfigChart.options.scales.y1.display = activeAxes.has('y1');
+    clientConfigChart.options.scales.y2.display = activeAxes.has('y2');
+    
+    clientConfigChart.update();
+}
+
+function createClientDataset(metricKey) {
+    const config = clientMetricConfigs[metricKey];
+    return {
+        label: config.label,
+        data: clientConfigData[config.data],
+        borderColor: config.color,
+        backgroundColor: config.color + '1A',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: config.color,
+        tension: 0.3,
+        fill: false,
+        yAxisID: config.yAxisID
+    };
+}
+
+function showClientPointDetails(index) {
+    const details = clientConfigData.details[index];
+    const detailsDiv = document.getElementById('clientPointDetails');
+    const contentDiv = document.getElementById('clientPointDetailsContent');
+    
+    contentDiv.innerHTML = `
+        <div class='point-details-grid'>
+            <div class='point-detail-item'>
+                <div class='label'>Time</div>
+                <div class='value'>${details.dateUtc}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Machine ID</div>
+                <div class='value' style='font-family:monospace;font-size:12px'>${details.fullMachineId}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Processor Count</div>
+                <div class='value'>${details.processorCount}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Clients Created</div>
+                <div class='value'>${details.clientsCreated}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Active Clients</div>
+                <div class='value'>${details.activeClients}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Connection Mode</div>
+                <div class='value'>${details.connectionMode}</div>
+            </div>
+        </div>
+    `;
+    
+    detailsDiv.style.display = 'block';
+}
+
 // Initialize chart when page loads
 document.addEventListener('DOMContentLoaded', function() {
     initMetricsChart();
+    initClientConfigChart();
 });
 </script>
 <script src='https://cdn.jsdelivr.net/npm/chart.js'></script>";

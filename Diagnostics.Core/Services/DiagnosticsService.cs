@@ -398,6 +398,98 @@ public class DiagnosticsService
 
         // Parse System Info metrics from all diagnostics
         result.SystemMetrics = ParseSystemMetrics(diagnostics);
+        
+        // Parse Client Configuration metrics from all diagnostics
+        result.ClientConfigMetrics = ParseClientConfigMetrics(diagnostics);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Parse and aggregate client configuration metrics from all diagnostics entries
+    /// </summary>
+    private ClientConfigTimePlot? ParseClientConfigMetrics((CosmosDiagnostics Diag, string RawJson)[] diagnostics)
+    {
+        var allSnapshots = new List<ClientConfigSnapshot>();
+
+        foreach (var (diag, _) in diagnostics)
+        {
+            var clientConfig = diag.Data?.ClientConfiguration;
+            if (clientConfig == null) continue;
+            
+            // Parse the start time from the diagnostics
+            DateTime dateUtc = DateTime.UtcNow;
+            if (!string.IsNullOrEmpty(diag.StartDateTime) && DateTime.TryParse(diag.StartDateTime, out var parsed1))
+            {
+                dateUtc = parsed1;
+            }
+            else if (!string.IsNullOrEmpty(diag.StartTime) && DateTime.TryParse(diag.StartTime, out var parsed2))
+            {
+                dateUtc = parsed2;
+            }
+            
+            // Extract short machine ID (last 8 chars of the GUID part)
+            var machineId = clientConfig.MachineId ?? "unknown";
+            var shortMachineId = machineId.Length > 8 ? machineId.Substring(machineId.Length - 8) : machineId;
+            
+            allSnapshots.Add(new ClientConfigSnapshot
+            {
+                DateUtc = dateUtc,
+                MachineId = machineId,
+                ShortMachineId = shortMachineId,
+                ProcessorCount = clientConfig.ProcessorCount,
+                NumberOfClientsCreated = clientConfig.NumberOfClientsCreated,
+                NumberOfActiveClients = clientConfig.NumberOfActiveClients,
+                ConnectionMode = clientConfig.ConnectionMode
+            });
+        }
+
+        if (!allSnapshots.Any())
+            return null;
+
+        // Order by time
+        var orderedSnapshots = allSnapshots
+            .OrderBy(s => s.DateUtc)
+            .ToList();
+
+        var result = new ClientConfigTimePlot
+        {
+            SampleCount = orderedSnapshots.Count,
+            StartTime = orderedSnapshots.First().DateUtc,
+            EndTime = orderedSnapshots.Last().DateUtc,
+            UniqueMachineIds = orderedSnapshots.Select(s => s.MachineId!).Distinct().ToList(),
+            Snapshots = orderedSnapshots.Take(500).ToList() // Keep top 500 for display
+        };
+
+        // Calculate ProcessorCount statistics
+        var processorValues = orderedSnapshots.Select(s => (double)s.ProcessorCount).OrderBy(v => v).ToList();
+        result.ProcessorCount = new MetricStatistics
+        {
+            Min = processorValues.First(),
+            Max = processorValues.Last(),
+            Avg = processorValues.Average(),
+            P90 = GetPercentile(processorValues, 90)
+        };
+
+        // Calculate NumberOfClientsCreated statistics
+        var clientsCreatedValues = orderedSnapshots.Select(s => (double)s.NumberOfClientsCreated).OrderBy(v => v).ToList();
+        result.NumberOfClientsCreated = new MetricStatistics
+        {
+            Min = clientsCreatedValues.First(),
+            Max = clientsCreatedValues.Last(),
+            Avg = clientsCreatedValues.Average(),
+            P90 = GetPercentile(clientsCreatedValues, 90)
+        };
+
+        // Calculate NumberOfActiveClients statistics
+        var activeClientsValues = orderedSnapshots.Select(s => (double)s.NumberOfActiveClients).OrderBy(v => v).ToList();
+        result.NumberOfActiveClients = new MetricStatistics
+        {
+            Min = activeClientsValues.First(),
+            Max = activeClientsValues.Last(),
+            Avg = activeClientsValues.Average(),
+            P90 = GetPercentile(activeClientsValues, 90)
+        };
 
         return result;
     }

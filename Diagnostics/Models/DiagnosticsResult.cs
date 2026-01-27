@@ -13,11 +13,49 @@ public class DiagnosticsResult
     public List<GroupedResult> TransportExceptionGroups { get; set; } = new();
     public List<TransportEventGroup> TransportEventGroups { get; set; } = new();
     
+    
     // Store all high latency diagnostics for drill-down
     public List<DiagnosticEntry> AllHighLatencyDiagnostics { get; set; } = new();
     
     // System metrics time plot
     public SystemMetricsTimePlot? SystemMetrics { get; set; }
+    
+    // Client configuration metrics over time
+    public ClientConfigTimePlot? ClientConfigMetrics { get; set; }
+}
+
+// Client configuration metrics over time
+public class ClientConfigTimePlot
+{
+    public int SampleCount { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    
+    // Unique machine IDs observed
+    public List<string> UniqueMachineIds { get; set; } = new();
+    
+    // Processor count statistics
+    public MetricStatistics ProcessorCount { get; set; } = new();
+    
+    // Number of clients created statistics
+    public MetricStatistics NumberOfClientsCreated { get; set; } = new();
+    
+    // Number of active clients statistics
+    public MetricStatistics NumberOfActiveClients { get; set; } = new();
+    
+    // Raw data points for chart
+    public List<ClientConfigSnapshot> Snapshots { get; set; } = new();
+}
+
+public class ClientConfigSnapshot
+{
+    public DateTime DateUtc { get; set; }
+    public string? MachineId { get; set; }
+    public string? ShortMachineId { get; set; }  // Last 8 chars for display
+    public int ProcessorCount { get; set; }
+    public int NumberOfClientsCreated { get; set; }
+    public int NumberOfActiveClients { get; set; }
+    public string? ConnectionMode { get; set; }
 }
 
 // System metrics statistics over time

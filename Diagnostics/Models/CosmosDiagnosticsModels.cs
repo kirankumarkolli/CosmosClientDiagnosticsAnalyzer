@@ -13,9 +13,15 @@ public class CosmosDiagnostics
 
     [JsonPropertyName("start time")]
     public string? StartTime { get; set; }
+    
+    [JsonPropertyName("start datetime")]
+    public string? StartDateTime { get; set; }
 
     [JsonPropertyName("duration in milliseconds")]
     public double Duration { get; set; }
+
+    [JsonPropertyName("data")]
+    public RootData? Data { get; set; }
 
     [JsonPropertyName("children")]
     public ChildrenSpan[]? Children { get; set; }
@@ -25,6 +31,37 @@ public class CosmosDiagnostics
         if (this.Children == null) return Array.Empty<ChildrenSpan>();
         return this.Children.SelectMany(e => e.Recursive());
     }
+}
+
+// Root level data containing Client Configuration
+public class RootData
+{
+    [JsonPropertyName("Client Configuration")]
+    public ClientConfiguration? ClientConfiguration { get; set; }
+}
+
+public class ClientConfiguration
+{
+    [JsonPropertyName("Client Created Time Utc")]
+    public string? ClientCreatedTimeUtc { get; set; }
+    
+    [JsonPropertyName("MachineId")]
+    public string? MachineId { get; set; }
+    
+    [JsonPropertyName("NumberOfClientsCreated")]
+    public int NumberOfClientsCreated { get; set; }
+    
+    [JsonPropertyName("NumberOfActiveClients")]
+    public int NumberOfActiveClients { get; set; }
+    
+    [JsonPropertyName("ConnectionMode")]
+    public string? ConnectionMode { get; set; }
+    
+    [JsonPropertyName("User Agent")]
+    public string? UserAgent { get; set; }
+    
+    [JsonPropertyName("ProcessorCount")]
+    public int ProcessorCount { get; set; }
 }
 
 public class DiagSummary
