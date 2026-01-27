@@ -15,6 +15,53 @@ public class DiagnosticsResult
     
     // Store all high latency diagnostics for drill-down
     public List<DiagnosticEntry> AllHighLatencyDiagnostics { get; set; } = new();
+    
+    // System metrics time plot
+    public SystemMetricsTimePlot? SystemMetrics { get; set; }
+}
+
+// System metrics statistics over time
+public class SystemMetricsTimePlot
+{
+    public int SampleCount { get; set; }
+    public DateTime? StartTime { get; set; }
+    public DateTime? EndTime { get; set; }
+    
+    // CPU statistics (percentage)
+    public MetricStatistics Cpu { get; set; } = new();
+    
+    // Memory statistics (bytes)
+    public MetricStatistics Memory { get; set; } = new();
+    
+    // Thread wait interval statistics (ms)
+    public MetricStatistics ThreadWaitIntervalInMs { get; set; } = new();
+    
+    // TCP connection count statistics
+    public MetricStatistics NumberOfOpenTcpConnections { get; set; } = new();
+    
+    // Raw data points for detailed view
+    public List<SystemInfoSnapshot> Snapshots { get; set; } = new();
+}
+
+public class MetricStatistics
+{
+    public double Min { get; set; }
+    public double Max { get; set; }
+    public double Avg { get; set; }
+    public double P90 { get; set; }
+}
+
+public class SystemInfoSnapshot
+{
+    public DateTime DateUtc { get; set; }
+    public double Cpu { get; set; }
+    public long Memory { get; set; }
+    public double ThreadWaitIntervalInMs { get; set; }
+    public int NumberOfOpenTcpConnections { get; set; }
+    public bool IsThreadStarving { get; set; }
+    public int AvailableThreads { get; set; }
+    public int MinThreads { get; set; }
+    public int MaxThreads { get; set; }
 }
 
 public class DiagnosticEntry

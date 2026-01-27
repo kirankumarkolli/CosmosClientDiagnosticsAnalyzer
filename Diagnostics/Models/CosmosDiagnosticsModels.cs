@@ -83,6 +83,9 @@ public class ChildData
 
     [JsonPropertyName("Query Metrics")]
     public string? QueryMetrics { get; set; }
+    
+    [JsonPropertyName("System Info")]
+    public SystemInfo[]? SystemInfo { get; set; }
 }
 
 public class ClientSideRequestStats
@@ -93,6 +96,44 @@ public class ClientSideRequestStats
     [JsonPropertyName("StoreResponseStatistics")]
     public StoreResponseStatistics[]? StoreResponseStatistics { get; set; }
 }
+
+// System info snapshot from diagnostics JSON
+public class SystemInfo
+{
+    [JsonPropertyName("dateUtc")]
+    public DateTime DateUtc { get; set; }
+    
+    [JsonPropertyName("cpu")]
+    public double Cpu { get; set; }
+    
+    [JsonPropertyName("memory")]
+    public long Memory { get; set; }
+    
+    [JsonPropertyName("threadInfo")]
+    public ThreadInfo? ThreadInfo { get; set; }
+    
+    [JsonPropertyName("numberOfOpenTcpConnection")]
+    public int NumberOfOpenTcpConnection { get; set; }
+}
+
+public class ThreadInfo
+{
+    [JsonPropertyName("isThreadStarving")]
+    public string? IsThreadStarving { get; set; }
+    
+    [JsonPropertyName("threadWaitIntervalInMs")]
+    public double ThreadWaitIntervalInMs { get; set; }
+    
+    [JsonPropertyName("availableThreads")]
+    public int AvailableThreads { get; set; }
+    
+    [JsonPropertyName("minThreads")]
+    public int MinThreads { get; set; }
+    
+    [JsonPropertyName("maxThreads")]
+    public int MaxThreads { get; set; }
+}
+
 
 public class AddressResolutionStatistics
 {

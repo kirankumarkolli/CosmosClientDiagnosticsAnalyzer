@@ -18,6 +18,7 @@ public class HtmlDumpService
         sb.AppendLine("</head><body>");
         sb.AppendLine("<div class='container'>");
         
+        
         sb.AppendLine("<h1>🔍 Cosmos Diagnostics Analysis</h1>");
         
         // Summary section
@@ -31,6 +32,16 @@ public class HtmlDumpService
             new { Metric = "High Latency Entries", Value = result.HighLatencyEntries }
         }));
         sb.AppendLine("</div>");
+        
+        // System Metrics Time Plot
+        if (result.SystemMetrics != null)
+        {
+            sb.AppendLine("<div class='section'>");
+            sb.AppendLine("<h2>📈 System Metrics Time Plot</h2>");
+            sb.AppendLine($"<p class='note'>Based on {result.SystemMetrics.SampleCount} samples from {result.SystemMetrics.StartTime:HH:mm:ss} to {result.SystemMetrics.EndTime:HH:mm:ss}</p>");
+            sb.AppendLine(DumpSystemMetricsTable(result.SystemMetrics));
+            sb.AppendLine("</div>");
+        }
         
         // Operation Buckets
         if (result.OperationBuckets.Any())
@@ -344,6 +355,68 @@ public class HtmlDumpService
         return System.Web.HttpUtility.HtmlEncode(value.ToString() ?? "");
     }
 
+    private string DumpSystemMetricsTable(SystemMetricsTimePlot metrics)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine("<div class='dump-header'>System Metrics Statistics</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th>Metric</th>");
+        sb.AppendLine("<th>Min</th>");
+        sb.AppendLine("<th>Avg</th>");
+        sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>Max</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        
+        // CPU row
+        sb.AppendLine("<tr class='odd'>");
+        sb.AppendLine("<td><span class='string'>CPU (%)</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Min:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Avg:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P90:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Max:F2}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        // Memory row (convert to MB)
+        sb.AppendLine("<tr class='even'>");
+        sb.AppendLine("<td><span class='string'>Memory (MB)</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.Min / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.Avg / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.P90 / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.Max / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        // Thread Wait Interval row
+        sb.AppendLine("<tr class='odd'>");
+        sb.AppendLine("<td><span class='string'>Thread Wait Interval (ms)</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Min:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Avg:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P90:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Max:F2}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        // TCP Connections row
+        sb.AppendLine("<tr class='even'>");
+        sb.AppendLine("<td><span class='string'>Open TCP Connections</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Min:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Avg:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Max:N0}</span></td>");
+        sb.AppendLine("</tr>");
+        
+        sb.AppendLine("</tbody>");
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
 
     private string DumpOperationBucketsTable(List<OperationBucket> buckets)
     {

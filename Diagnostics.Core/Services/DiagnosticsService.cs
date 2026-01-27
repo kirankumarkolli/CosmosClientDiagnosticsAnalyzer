@@ -396,6 +396,101 @@ public class DiagnosticsService
             .OrderByDescending(e => e.Count)
             .ToList();
 
+        // Parse System Info metrics from all diagnostics
+        result.SystemMetrics = ParseSystemMetrics(diagnostics);
+
+        return result;
+    }
+
+    /// <summary>
+    /// Parse and aggregate system metrics from all diagnostics entries
+    /// </summary>
+    private SystemMetricsTimePlot? ParseSystemMetrics((CosmosDiagnostics Diag, string RawJson)[] diagnostics)
+    {
+        var allSnapshots = new List<SystemInfoSnapshot>();
+
+        foreach (var (diag, _) in diagnostics)
+        {
+            // Get SystemInfo from children data
+            var systemInfoArrays = diag.Recursive()
+                .Where(c => c.Data?.SystemInfo != null)
+                .SelectMany(c => c.Data!.SystemInfo!);
+
+            foreach (var info in systemInfoArrays)
+            {
+                allSnapshots.Add(new SystemInfoSnapshot
+                {
+                    DateUtc = info.DateUtc,
+                    Cpu = info.Cpu,
+                    Memory = info.Memory,
+                    ThreadWaitIntervalInMs = info.ThreadInfo?.ThreadWaitIntervalInMs ?? 0,
+                    NumberOfOpenTcpConnections = info.NumberOfOpenTcpConnection,
+                    IsThreadStarving = info.ThreadInfo?.IsThreadStarving?.Equals("True", StringComparison.OrdinalIgnoreCase) ?? false,
+                    AvailableThreads = info.ThreadInfo?.AvailableThreads ?? 0,
+                    MinThreads = info.ThreadInfo?.MinThreads ?? 0,
+                    MaxThreads = info.ThreadInfo?.MaxThreads ?? 0
+                });
+            }
+        }
+
+        if (!allSnapshots.Any())
+            return null;
+
+        // Order by time and deduplicate by timestamp
+        var orderedSnapshots = allSnapshots
+            .GroupBy(s => s.DateUtc)
+            .Select(g => g.First())
+            .OrderBy(s => s.DateUtc)
+            .ToList();
+
+        var result = new SystemMetricsTimePlot
+        {
+            SampleCount = orderedSnapshots.Count,
+            StartTime = orderedSnapshots.First().DateUtc,
+            EndTime = orderedSnapshots.Last().DateUtc,
+            Snapshots = orderedSnapshots.Take(100).ToList() // Keep top 100 for display
+        };
+
+        // Calculate CPU statistics
+        var cpuValues = orderedSnapshots.Select(s => s.Cpu).OrderBy(v => v).ToList();
+        result.Cpu = new MetricStatistics
+        {
+            Min = cpuValues.First(),
+            Max = cpuValues.Last(),
+            Avg = cpuValues.Average(),
+            P90 = GetPercentile(cpuValues, 90)
+        };
+
+        // Calculate Memory statistics (convert to MB for readability)
+        var memoryValues = orderedSnapshots.Select(s => (double)s.Memory).OrderBy(v => v).ToList();
+        result.Memory = new MetricStatistics
+        {
+            Min = memoryValues.First(),
+            Max = memoryValues.Last(),
+            Avg = memoryValues.Average(),
+            P90 = GetPercentile(memoryValues, 90)
+        };
+
+        // Calculate ThreadWaitIntervalInMs statistics
+        var threadWaitValues = orderedSnapshots.Select(s => s.ThreadWaitIntervalInMs).OrderBy(v => v).ToList();
+        result.ThreadWaitIntervalInMs = new MetricStatistics
+        {
+            Min = threadWaitValues.First(),
+            Max = threadWaitValues.Last(),
+            Avg = threadWaitValues.Average(),
+            P90 = GetPercentile(threadWaitValues, 90)
+        };
+
+        // Calculate TCP connection statistics
+        var tcpValues = orderedSnapshots.Select(s => (double)s.NumberOfOpenTcpConnections).OrderBy(v => v).ToList();
+        result.NumberOfOpenTcpConnections = new MetricStatistics
+        {
+            Min = tcpValues.First(),
+            Max = tcpValues.Last(),
+            Avg = tcpValues.Average(),
+            P90 = GetPercentile(tcpValues, 90)
+        };
+
         return result;
     }
 
