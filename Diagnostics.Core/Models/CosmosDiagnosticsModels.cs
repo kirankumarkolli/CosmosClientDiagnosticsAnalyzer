@@ -95,6 +95,12 @@ public class ClientSideRequestStats
 
     [JsonPropertyName("StoreResponseStatistics")]
     public StoreResponseStatistics[]? StoreResponseStatistics { get; set; }
+    
+    [JsonPropertyName("SystemInfo")]
+    public SystemInfo[]? SystemInfo { get; set; }
+    
+    [JsonPropertyName("systemInfo")]
+    public SystemInfo[]? SystemInfoLower { get; set; }
 }
 
 // System info snapshot from diagnostics JSON

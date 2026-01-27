@@ -411,25 +411,34 @@ public class DiagnosticsService
 
         foreach (var (diag, _) in diagnostics)
         {
-            // Get SystemInfo from children data
-            var systemInfoArrays = diag.Recursive()
+            // Get SystemInfo from children data (location 1: ChildData.SystemInfo)
+            var systemInfoFromChildData = diag.Recursive()
                 .Where(c => c.Data?.SystemInfo != null)
                 .SelectMany(c => c.Data!.SystemInfo!);
 
-            foreach (var info in systemInfoArrays)
+            foreach (var info in systemInfoFromChildData)
             {
-                allSnapshots.Add(new SystemInfoSnapshot
-                {
-                    DateUtc = info.DateUtc,
-                    Cpu = info.Cpu,
-                    Memory = info.Memory,
-                    ThreadWaitIntervalInMs = info.ThreadInfo?.ThreadWaitIntervalInMs ?? 0,
-                    NumberOfOpenTcpConnections = info.NumberOfOpenTcpConnection,
-                    IsThreadStarving = info.ThreadInfo?.IsThreadStarving?.Equals("True", StringComparison.OrdinalIgnoreCase) ?? false,
-                    AvailableThreads = info.ThreadInfo?.AvailableThreads ?? 0,
-                    MinThreads = info.ThreadInfo?.MinThreads ?? 0,
-                    MaxThreads = info.ThreadInfo?.MaxThreads ?? 0
-                });
+                AddSystemInfoSnapshot(allSnapshots, info);
+            }
+            
+            // Get SystemInfo from ClientSideRequestStats (location 2)
+            var systemInfoFromClientStats = diag.Recursive()
+                .Where(c => c.Data?.ClientSideRequestStats?.SystemInfo != null)
+                .SelectMany(c => c.Data!.ClientSideRequestStats!.SystemInfo!);
+
+            foreach (var info in systemInfoFromClientStats)
+            {
+                AddSystemInfoSnapshot(allSnapshots, info);
+            }
+            
+            // Also check SystemInfoLower (camelCase variant)
+            var systemInfoLower = diag.Recursive()
+                .Where(c => c.Data?.ClientSideRequestStats?.SystemInfoLower != null)
+                .SelectMany(c => c.Data!.ClientSideRequestStats!.SystemInfoLower!);
+
+            foreach (var info in systemInfoLower)
+            {
+                AddSystemInfoSnapshot(allSnapshots, info);
             }
         }
 
@@ -495,6 +504,25 @@ public class DiagnosticsService
     }
 
     /// <summary>
+    /// Helper to add system info to snapshot list
+    /// </summary>
+    private static void AddSystemInfoSnapshot(List<SystemInfoSnapshot> snapshots, SystemInfo info)
+    {
+        snapshots.Add(new SystemInfoSnapshot
+        {
+            DateUtc = info.DateUtc,
+            Cpu = info.Cpu,
+            Memory = info.Memory,
+            ThreadWaitIntervalInMs = info.ThreadInfo?.ThreadWaitIntervalInMs ?? 0,
+            NumberOfOpenTcpConnections = info.NumberOfOpenTcpConnection,
+            IsThreadStarving = info.ThreadInfo?.IsThreadStarving?.Equals("True", StringComparison.OrdinalIgnoreCase) ?? false,
+            AvailableThreads = info.ThreadInfo?.AvailableThreads ?? 0,
+            MinThreads = info.ThreadInfo?.MinThreads ?? 0,
+            MaxThreads = info.ThreadInfo?.MaxThreads ?? 0
+        });
+    }
+
+    /// <summary>
     /// Calculate percentile from a sorted list of values
     /// </summary>
     private static double GetPercentile(List<double> sortedValues, double percentile)
@@ -508,6 +536,7 @@ public class DiagnosticsService
         double index = (percentile / 100.0) * (sortedValues.Count - 1);
         int lower = (int)Math.Floor(index);
         int upper = (int)Math.Ceiling(index);
+
 
         if (lower == upper)
             return sortedValues[lower];
