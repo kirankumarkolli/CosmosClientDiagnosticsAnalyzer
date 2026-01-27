@@ -11,26 +11,38 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = 100 * 1024 * 1024; // 100MB
 });
 
-// Add Microsoft Identity authentication (Microsoft employees only)
-builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(options =>
+// Check if Azure AD authentication is configured
+var clientId = builder.Configuration["AzureAd:ClientId"];
+var enableAuth = !string.IsNullOrEmpty(clientId) && clientId != "YOUR_CLIENT_ID_HERE";
+
+if (enableAuth)
+{
+    // Add Microsoft Identity authentication (Microsoft employees only)
+    builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+        .AddMicrosoftIdentityWebApp(options =>
+        {
+            options.Instance = "https://login.microsoftonline.com/";
+            options.TenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47"; // Microsoft tenant ID
+            options.ClientId = clientId;
+            options.CallbackPath = "/signin-oidc";
+        });
+
+    builder.Services.AddAuthorization(options =>
     {
-        options.Instance = "https://login.microsoftonline.com/";
-        options.TenantId = "72f988bf-86f1-41af-91ab-2d7cd011db47"; // Microsoft tenant ID
-        options.ClientId = builder.Configuration["AzureAd:ClientId"] ?? "YOUR_CLIENT_ID"; // Set in appsettings.json or environment variable
-        options.CallbackPath = "/signin-oidc";
+        // Require authenticated users by default
+        options.FallbackPolicy = options.DefaultPolicy;
     });
 
-builder.Services.AddAuthorization(options =>
+    builder.Services.AddControllersWithViews()
+        .AddMicrosoftIdentityUI();
+    builder.Services.AddRazorPages();
+}
+else
 {
-    // Require authenticated users by default
-    options.FallbackPolicy = options.DefaultPolicy;
-});
+    // No authentication - for local development without Azure AD
+    builder.Services.AddControllers();
+}
 
-// Add services
-builder.Services.AddControllersWithViews()
-    .AddMicrosoftIdentityUI();
-builder.Services.AddRazorPages();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -48,6 +60,7 @@ builder.Services.AddScoped<HtmlDumpService>();
 
 var app = builder.Build();
 
+
 // Configure pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -56,14 +69,22 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
-app.UseAuthentication();
-app.UseAuthorization();
 
-app.MapControllers();
-app.MapRazorPages();
-
-// Serve upload page at root (requires authentication)
-app.MapGet("/", () => Results.Content(GetUploadPage(), "text/html")).RequireAuthorization();
+if (enableAuth)
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
+    app.MapRazorPages();
+    // Serve upload page at root (requires authentication)
+    app.MapGet("/", () => Results.Content(GetUploadPage(), "text/html")).RequireAuthorization();
+}
+else
+{
+    app.MapControllers();
+    // Serve upload page at root (no authentication for local dev)
+    app.MapGet("/", () => Results.Content(GetUploadPage(), "text/html"));
+}
 
 app.Run();
 

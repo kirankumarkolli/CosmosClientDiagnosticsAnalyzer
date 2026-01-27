@@ -308,6 +308,7 @@ public class HtmlDumpService
         return System.Web.HttpUtility.HtmlEncode(value.ToString() ?? "");
     }
 
+
     private string DumpOperationBucketsTable(List<OperationBucket> buckets)
     {
         var sb = new StringBuilder();
@@ -321,6 +322,10 @@ public class HtmlDumpService
         sb.AppendLine("<th class='row-num'>#</th>");
         sb.AppendLine("<th>Bucket</th>");
         sb.AppendLine("<th>Min</th>");
+        sb.AppendLine("<th>P50</th>");
+        sb.AppendLine("<th>P75</th>");
+        sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>P95</th>");
         sb.AppendLine("<th>Max</th>");
         sb.AppendLine("<th>Min NW Count</th>");
         sb.AppendLine("<th>Max NW Count</th>");
@@ -338,6 +343,10 @@ public class HtmlDumpService
             sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
             sb.AppendLine($"<td><a href='#' class='bucket-link' onclick=\"showBucket('{bucketId}'); return false;\">{System.Web.HttpUtility.HtmlEncode(bucket.Bucket)}</a></td>");
             sb.AppendLine($"<td><span class='number'>{bucket.Min:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.P50:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.P75:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.P90:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.P95:F2}</span></td>");
             sb.AppendLine($"<td><span class='number'>{bucket.Max:F2}</span></td>");
             sb.AppendLine($"<td><span class='number'>{bucket.MinNWCount:N0}</span></td>");
             sb.AppendLine($"<td><span class='number'>{bucket.MaxNWCount:N0}</span></td>");

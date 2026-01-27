@@ -32,6 +32,10 @@ public class OperationBucket
 {
     public string? Bucket { get; set; }
     public double Min { get; set; }
+    public double P50 { get; set; }
+    public double P75 { get; set; }
+    public double P90 { get; set; }
+    public double P95 { get; set; }
     public double Max { get; set; }
     public int MinNWCount { get; set; }
     public int MaxNWCount { get; set; }

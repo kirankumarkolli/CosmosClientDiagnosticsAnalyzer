@@ -95,18 +95,25 @@ public class DiagnosticsService
             .OrderByDescending(e => e.Duration)
             .ToList();
 
-        // Operation buckets
+        // Operation buckets with percentiles
         result.OperationBuckets = highLatencyDiags
             .Where(e => e.Diag.Name != null)
             .GroupBy(e => e.Diag.Name)
-            .Select(g => new OperationBucket
-            {
-                Bucket = g.Key,
-                Min = g.Min(x => x.Diag.Duration),
-                Max = g.Max(x => x.Diag.Duration),
-                MinNWCount = g.Min(x => x.Diag.Summary?.GetDirectCallCount() ?? 0),
-                MaxNWCount = g.Max(x => x.Diag.Summary?.GetDirectCallCount() ?? 0),
-                Count = g.Count(),
+            .Select(g => {
+                var durations = g.Select(x => x.Diag.Duration).OrderBy(x => x).ToList();
+                return new OperationBucket
+                {
+                    Bucket = g.Key,
+                    Min = durations.First(),
+                    P50 = GetPercentile(durations, 50),
+                    P75 = GetPercentile(durations, 75),
+                    P90 = GetPercentile(durations, 90),
+                    P95 = GetPercentile(durations, 95),
+                    Max = durations.Last(),
+                    MinNWCount = g.Min(x => x.Diag.Summary?.GetDirectCallCount() ?? 0),
+                    MaxNWCount = g.Max(x => x.Diag.Summary?.GetDirectCallCount() ?? 0),
+                    Count = g.Count(),
+                };
             })
             .OrderByDescending(e => e.Count)
             .ToList();
@@ -301,6 +308,29 @@ public class DiagnosticsService
             .ToList();
 
         return result;
+    }
+
+    /// <summary>
+    /// Calculate percentile from a sorted list of values
+    /// </summary>
+    private static double GetPercentile(List<double> sortedValues, double percentile)
+    {
+        if (sortedValues == null || sortedValues.Count == 0)
+            return 0;
+
+        if (sortedValues.Count == 1)
+            return sortedValues[0];
+
+        double index = (percentile / 100.0) * (sortedValues.Count - 1);
+        int lower = (int)Math.Floor(index);
+        int upper = (int)Math.Ceiling(index);
+
+        if (lower == upper)
+            return sortedValues[lower];
+
+        // Linear interpolation
+        double weight = index - lower;
+        return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
     }
 
     #region JSON Repair Logic

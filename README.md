@@ -41,17 +41,24 @@ A web service that analyzes Azure Cosmos DB diagnostics logs and produces LinqPa
 
 ### Running the Web Service (Standalone)
 
-```bash
-dotnet run --project Diagnostics/Diagnostics.csproj
+```powershell
+dotnet run --project Diagnostics\Diagnostics.csproj
 ```
 
 Then open `http://localhost:5000/` in your browser.
 
 ### Running Azure Functions Locally
 
-```bash
+```powershell
 # Install Azure Functions Core Tools (if not installed)
+# Option 1: Using npm
 npm install -g azure-functions-core-tools@4
+
+# Option 2: Using winget
+winget install Microsoft.AzureFunctionsCoreTools
+
+# Option 3: Using Chocolatey
+choco install azure-functions-core-tools
 
 # Navigate to Functions project
 cd Diagnostics.Functions
@@ -78,12 +85,18 @@ Or with Visual Studio:
 
 - `latencyThreshold` (default: 600) - Latency threshold in milliseconds
 
-### Example with curl
+### Example with curl (Windows)
 
-```bash
-curl -X POST "http://localhost:5000/api/diagnostics/analyze?latencyThreshold=600" \
-  -F "file=@CopilotDiagnostics.txt" \
+```powershell
+# Using curl.exe (built into Windows 10/11)
+curl.exe -X POST "http://localhost:5000/api/diagnostics/analyze?latencyThreshold=600" `
+  -F "file=@CopilotDiagnostics.txt" `
   -o result.html
+
+# Or using Invoke-RestMethod (native PowerShell)
+$form = @{ file = Get-Item -Path "CopilotDiagnostics.txt" }
+Invoke-RestMethod -Uri "http://localhost:5000/api/diagnostics/analyze?latencyThreshold=600" `
+  -Method Post -Form $form -OutFile result.html
 ```
 
 ---
@@ -94,7 +107,7 @@ curl -X POST "http://localhost:5000/api/diagnostics/analyze?latencyThreshold=600
 
 #### Option A: Using GitHub CLI (Recommended)
 
-```bash
+```powershell
 # Navigate to project directory
 cd C:\Users\kirankk\source\repos\Diagnostics
 
@@ -107,7 +120,7 @@ gh repo create cosmos-diagnostics-analyzer --public --source=. --push
 
 #### Option B: Using Git Commands
 
-```bash
+```powershell
 # 1. Create a new repository on GitHub.com (https://github.com/new)
 #    Name: cosmos-diagnostics-analyzer
 #    Do NOT initialize with README
@@ -139,41 +152,42 @@ git push -u origin main
 4. Click **Review + create** → **Create**
 5. Wait for deployment to complete (~2 minutes)
 
-#### Option B: Using Azure CLI
+#### Option B: Using Azure CLI (PowerShell)
 
-```bash
+```powershell
 # Login to Azure
 az login
 
-# Set variables (customize these)
-RESOURCE_GROUP="rg-cosmos-diagnostics"
-LOCATION="eastus"
-STORAGE_ACCOUNT="stcosmosdiag$(date +%s)"  # Must be unique
-FUNCTION_APP="func-cosmos-diagnostics-$(date +%s)"  # Must be unique
+# Set variables (customize these - change YOUR_UNIQUE_ID to something unique like your initials + date)
+$RESOURCE_GROUP = "rg-cosmos-diagnostics"
+$LOCATION = "eastus"
+$UNIQUE_ID = "YOUR_UNIQUE_ID"  # Change this! e.g., "kk20240115"
+$STORAGE_ACCOUNT = "stcosmosdiag$UNIQUE_ID"  # Must be 3-24 chars, lowercase letters and numbers only
+$FUNCTION_APP = "func-cosmos-diagnostics-$UNIQUE_ID"
 
 # Create resource group
 az group create --name $RESOURCE_GROUP --location $LOCATION
 
 # Create storage account (required for Functions)
-az storage account create \
-  --name $STORAGE_ACCOUNT \
-  --resource-group $RESOURCE_GROUP \
-  --location $LOCATION \
+az storage account create `
+  --name $STORAGE_ACCOUNT `
+  --resource-group $RESOURCE_GROUP `
+  --location $LOCATION `
   --sku Standard_LRS
 
 # Create function app
-az functionapp create \
-  --name $FUNCTION_APP \
-  --resource-group $RESOURCE_GROUP \
-  --storage-account $STORAGE_ACCOUNT \
-  --consumption-plan-location $LOCATION \
-  --runtime dotnet-isolated \
-  --runtime-version 8 \
-  --functions-version 4 \
+az functionapp create `
+  --name $FUNCTION_APP `
+  --resource-group $RESOURCE_GROUP `
+  --storage-account $STORAGE_ACCOUNT `
+  --consumption-plan-location $LOCATION `
+  --runtime dotnet-isolated `
+  --runtime-version 8 `
+  --functions-version 4 `
   --os-type Windows
 
 # Print the function app URL
-echo "Function App URL: https://$FUNCTION_APP.azurewebsites.net"
+Write-Host "Function App URL: https://$FUNCTION_APP.azurewebsites.net"
 ```
 
 ---
@@ -213,7 +227,7 @@ env:
 
 Commit and push the change:
 
-```bash
+```powershell
 git add .github/workflows/azure-functions.yml
 git commit -m "Update function app name in workflow"
 git push origin main
@@ -230,14 +244,19 @@ git push origin main
 
 #### Test the deployed function:
 
-```bash
+```powershell
 # Health check
-curl https://YOUR_FUNCTION_APP.azurewebsites.net/api/health
+Invoke-RestMethod -Uri "https://YOUR_FUNCTION_APP.azurewebsites.net/api/health"
 
-# Analyze a diagnostics file
-curl -X POST "https://YOUR_FUNCTION_APP.azurewebsites.net/api/diagnostics/analyze" \
-  -F "file=@CopilotDiagnostics.txt" \
+# Analyze a diagnostics file (using curl.exe on Windows)
+curl.exe -X POST "https://YOUR_FUNCTION_APP.azurewebsites.net/api/diagnostics/analyze" `
+  -F "file=@CopilotDiagnostics.txt" `
   -o result.html
+
+# Or using Invoke-RestMethod
+$form = @{ file = Get-Item -Path "CopilotDiagnostics.txt" }
+Invoke-RestMethod -Uri "https://YOUR_FUNCTION_APP.azurewebsites.net/api/diagnostics/analyze" `
+  -Method Post -Form $form -OutFile result.html
 ```
 
 ---

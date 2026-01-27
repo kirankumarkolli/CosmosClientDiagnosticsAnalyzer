@@ -1,12 +1,10 @@
 using Diagnostics.Services;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Diagnostics.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize] // Require Microsoft authentication
 public class DiagnosticsController : ControllerBase
 {
     private readonly DiagnosticsService _diagnosticsService;
