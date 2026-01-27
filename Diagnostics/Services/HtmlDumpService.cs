@@ -123,6 +123,22 @@ public class HtmlDumpService
             sb.AppendLine("</div>");
         }
         
+        // JSON Modal
+        sb.AppendLine(@"
+<div id='jsonModal' class='modal' onclick='closeJsonModal(event)'>
+    <div class='modal-content' onclick='event.stopPropagation()'>
+        <div class='modal-header'>
+            <h3>📄 JSON Content</h3>
+            <button class='modal-close' onclick='closeJsonModal()'>&times;</button>
+        </div>
+        <div class='modal-actions'>
+            <button class='btn-copy' onclick='copyJsonContent()'>📋 Copy to Clipboard</button>
+            <button class='btn-format' onclick='formatJson()'>🔧 Format JSON</button>
+        </div>
+        <pre id='jsonModalContent' class='json-display'></pre>
+    </div>
+</div>");
+        
         sb.AppendLine("</div>");
         sb.AppendLine(GetScripts());
         sb.AppendLine("</body></html>");
@@ -191,7 +207,20 @@ public class HtmlDumpService
             {
                 var value = prop.GetValue(item);
                 var sortValue = GetSortValue(value);
-                sb.AppendLine($"<td data-sort='{sortValue}'>{FormatValue(value)}</td>");
+                
+                // Special handling for RawJson property
+                if (prop.Name == "RawJson" && value is string jsonStr && !string.IsNullOrEmpty(jsonStr))
+                {
+                    var jsonId = $"json-{Guid.NewGuid():N}";
+                    sb.AppendLine($"<td data-sort='{jsonStr.Length}'>");
+                    sb.AppendLine($"<button class='btn-json' onclick=\"showJson('{jsonId}')\">📄 View JSON ({jsonStr.Length:N0} chars)</button>");
+                    sb.AppendLine($"<div id='{jsonId}' class='json-content' style='display:none;'>{System.Web.HttpUtility.HtmlEncode(jsonStr)}</div>");
+                    sb.AppendLine("</td>");
+                }
+                else
+                {
+                    sb.AppendLine($"<td data-sort='{sortValue}'>{FormatValue(value)}</td>");
+                }
             }
             sb.AppendLine("</tr>");
         }
@@ -555,6 +584,120 @@ summary:hover {
 .sortable th.sortable.desc .sort-icon {
     content: '';
 }
+
+/* JSON button and modal */
+.btn-json {
+    background: #0e639c;
+    color: white;
+    border: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.btn-json:hover {
+    background: #1177bb;
+}
+
+.json-content {
+    display: none;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.8);
+    animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background-color: #1e1e1e;
+    margin: 5% auto;
+    padding: 0;
+    border: 1px solid #3e3e3e;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 1200px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: #2d2d2d;
+    border-bottom: 1px solid #3e3e3e;
+    border-radius: 8px 8px 0 0;
+}
+
+.modal-header h3 {
+    margin: 0;
+    color: #4fc3f7;
+}
+
+.modal-close {
+    background: none;
+    border: none;
+    color: #808080;
+    font-size: 28px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-close:hover {
+    color: #dc3545;
+}
+
+.modal-actions {
+    padding: 10px 20px;
+    background: #252526;
+    border-bottom: 1px solid #3e3e3e;
+    display: flex;
+    gap: 10px;
+}
+
+.btn-copy, .btn-format {
+    background: #0e639c;
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn-copy:hover, .btn-format:hover {
+    background: #1177bb;
+}
+
+.json-display {
+    margin: 0;
+    padding: 20px;
+    overflow: auto;
+    flex: 1;
+    background: #1e1e1e;
+    color: #ce9178;
+    font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
 </style>";
     }
 
@@ -649,6 +792,56 @@ function sortTable(tableId, colIndex) {
         tbody.appendChild(row);
     });
 }
+
+// JSON Modal functions
+let currentJsonContent = '';
+
+function showJson(jsonId) {
+    const jsonEl = document.getElementById(jsonId);
+    if (!jsonEl) return;
+    
+    currentJsonContent = jsonEl.innerText;
+    document.getElementById('jsonModalContent').innerText = currentJsonContent;
+    document.getElementById('jsonModal').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeJsonModal(event) {
+    if (event && event.target !== document.getElementById('jsonModal')) return;
+    document.getElementById('jsonModal').style.display = 'none';
+    document.body.style.overflow = 'auto';
+}
+
+function copyJsonContent() {
+    navigator.clipboard.writeText(currentJsonContent).then(() => {
+        const btn = document.querySelector('.btn-copy');
+        const originalText = btn.innerText;
+        btn.innerText = '✓ Copied!';
+        btn.style.background = '#28a745';
+        setTimeout(() => {
+            btn.innerText = originalText;
+            btn.style.background = '#0e639c';
+        }, 2000);
+    });
+}
+
+function formatJson() {
+    try {
+        const parsed = JSON.parse(currentJsonContent);
+        const formatted = JSON.stringify(parsed, null, 2);
+        document.getElementById('jsonModalContent').innerText = formatted;
+        currentJsonContent = formatted;
+    } catch (e) {
+        alert('Invalid JSON - cannot format');
+    }
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeJsonModal();
+    }
+});
 </script>";
     }
 }

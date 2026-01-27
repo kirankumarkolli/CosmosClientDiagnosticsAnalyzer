@@ -24,6 +24,7 @@ public class DiagnosticEntry
     public int DirectCallCount { get; set; }
     public int GatewayCallCount { get; set; }
     public int TotalCallCount { get; set; }
+    public string? RawJson { get; set; }
 }
 
 public class OperationBucket

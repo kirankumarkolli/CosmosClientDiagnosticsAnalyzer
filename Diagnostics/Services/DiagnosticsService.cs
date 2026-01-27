@@ -23,8 +23,8 @@ public class DiagnosticsService
         
         result.TotalEntries = lines.Length;
 
-        // Parse each line
-        var diagnosticsList = new List<CosmosDiagnostics>();
+        // Parse each line and keep track of original JSON
+        var diagnosticsList = new List<(CosmosDiagnostics Diag, string RawJson)>();
         int repairedCount = 0;
 
         foreach (var line in lines.Where(e => !string.IsNullOrWhiteSpace(e)))
@@ -32,7 +32,7 @@ public class DiagnosticsService
             var diag = TryDeserializePartial<CosmosDiagnostics>(line);
             if (diag != null)
             {
-                diagnosticsList.Add(diag);
+                diagnosticsList.Add((diag, line.Trim()));
                 if (line.Contains("...") || !line.TrimEnd().EndsWith('}'))
                 {
                     repairedCount++;
@@ -46,34 +46,35 @@ public class DiagnosticsService
         var diagnostics = diagnosticsList.ToArray();
 
         // High latency diagnostics
-        var highLatencyDiags = diagnostics.Where(e => e.Duration > latencyThreshold).ToList();
+        var highLatencyDiags = diagnostics.Where(e => e.Diag.Duration > latencyThreshold).ToList();
         result.HighLatencyEntries = highLatencyDiags.Count;
 
         // Store all high latency diagnostics for drill-down
         result.AllHighLatencyDiagnostics = highLatencyDiags
             .Select(e => new DiagnosticEntry
             {
-                Name = e.Name,
-                StartTime = e.StartTime,
-                Duration = e.Duration,
-                DirectCallCount = e.Summary?.GetDirectCallCount() ?? 0,
-                GatewayCallCount = e.Summary?.GetGatewayCallCount() ?? 0,
-                TotalCallCount = e.Summary?.GetTotalCallCount() ?? 0
+                Name = e.Diag.Name,
+                StartTime = e.Diag.StartTime,
+                Duration = e.Diag.Duration,
+                DirectCallCount = e.Diag.Summary?.GetDirectCallCount() ?? 0,
+                GatewayCallCount = e.Diag.Summary?.GetGatewayCallCount() ?? 0,
+                TotalCallCount = e.Diag.Summary?.GetTotalCallCount() ?? 0,
+                RawJson = e.RawJson
             })
             .OrderByDescending(e => e.Duration)
             .ToList();
 
         // Operation buckets
         result.OperationBuckets = highLatencyDiags
-            .Where(e => e.Name != null)
-            .GroupBy(e => e.Name)
+            .Where(e => e.Diag.Name != null)
+            .GroupBy(e => e.Diag.Name)
             .Select(g => new OperationBucket
             {
                 Bucket = g.Key,
-                Min = g.Min(x => x.Duration),
-                Max = g.Max(x => x.Duration),
-                MinNWCount = g.Min(x => x.Summary?.GetDirectCallCount() ?? 0),
-                MaxNWCount = g.Max(x => x.Summary?.GetDirectCallCount() ?? 0),
+                Min = g.Min(x => x.Diag.Duration),
+                Max = g.Max(x => x.Diag.Duration),
+                MinNWCount = g.Min(x => x.Diag.Summary?.GetDirectCallCount() ?? 0),
+                MaxNWCount = g.Max(x => x.Diag.Summary?.GetDirectCallCount() ?? 0),
                 Count = g.Count(),
             })
             .OrderByDescending(e => e.Count)
@@ -86,12 +87,12 @@ public class DiagnosticsService
         }
 
         // Filter to target operation
-        diagnostics = diagnostics.Where(e => e.Name == highCountOpName).ToArray();
+        var targetDiagnostics = diagnostics.Where(e => e.Diag.Name == highCountOpName).ToArray();
 
         // Store response statistics
-        var storeResponseStatistics = diagnostics
-            .Where(e => e.Recursive() != null)
-            .SelectMany(e => e.Recursive())
+        var storeResponseStatistics = targetDiagnostics
+            .Where(e => e.Diag.Recursive() != null)
+            .SelectMany(e => e.Diag.Recursive())
             .Select(e => e.Data?.ClientSideRequestStats)
             .Select(e => e?.StoreResponseStatistics)
             .Where(e => e != null)
