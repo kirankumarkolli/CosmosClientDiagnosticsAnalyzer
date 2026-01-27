@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cosmos Diagnostics Analyzer</title>
+    <base href="/" />
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="Diagnostics.Web.styles.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="importmap"></script>
+</head>
+
+<body>
+    <div id="app">
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #1e1e1e;">
+            <div class="spinner" style="width: 50px; height: 50px; border: 4px solid #3c3c3c; border-top-color: #4fc3f7; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="color: #9cdcfe; margin-top: 20px;">Loading Cosmos Diagnostics Analyzer...</p>
+        </div>
+        <style>
+            @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+    </div>
+
+    <div id="blazor-error-ui" style="background: #5a1d1d; color: #f48771; padding: 20px; display: none;">
+        An unhandled error has occurred.
+        <a href="." class="reload" style="color: #4fc3f7;">Reload</a>
+        <span class="dismiss" style="cursor: pointer; margin-left: 10px;">🗙</span>
+    </div>
+    
+    <script>
+        function downloadFile(filename, content) {
+            const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+</body>
+
+</html>

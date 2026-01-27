@@ -1,0 +1,183 @@
+@page "/"
+@using Diagnostics.Core.Services
+@using Diagnostics.Core.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Cosmos Diagnostics Analyzer</PageTitle>
+
+<div class="analyzer-container">
+    <h1>🔍 Cosmos Diagnostics Analyzer</h1>
+    <p class="subtitle">Upload your Cosmos DB diagnostics file for analysis</p>
+
+    <div class="upload-section">
+        <div class="upload-box @(isDragOver ? "drag-over" : "")"
+             @ondragenter="HandleDragEnter"
+             @ondragleave="HandleDragLeave"
+             @ondragover:preventDefault
+             @ondrop="HandleDrop"
+             @ondrop:preventDefault>
+            
+            @if (isProcessing)
+            {
+                <div class="processing">
+                    <div class="spinner"></div>
+                    <p>Analyzing diagnostics... @progressMessage</p>
+                </div>
+            }
+            else
+            {
+                <div class="upload-content">
+                    <span class="upload-icon">📁</span>
+                    <p>Drag and drop your diagnostics file here</p>
+                    <p class="or-text">or</p>
+                    <label class="file-input-label">
+                        <InputFile OnChange="HandleFileSelected" accept=".txt,.json,.log" />
+                        <span class="btn-upload">Choose File</span>
+                    </label>
+                </div>
+            }
+        </div>
+
+        <div class="options">
+            <label>
+                Latency Threshold (ms):
+                <input type="number" @bind="latencyThreshold" min="1" max="10000" />
+            </label>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">
+            <span>⚠️ @errorMessage</span>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(htmlReport))
+    {
+        <div class="results-section">
+            <div class="results-header">
+                <h2>📊 Analysis Results</h2>
+                <button class="btn-download" @onclick="DownloadReport">📥 Download Report</button>
+            </div>
+            <div class="report-frame">
+                @((MarkupString)htmlReport)
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private bool isDragOver = false;
+    private bool isProcessing = false;
+    private string progressMessage = "";
+    private string errorMessage = "";
+    private string htmlReport = "";
+    private int latencyThreshold = 600;
+    
+    private readonly DiagnosticsService _diagnosticsService = new();
+    private readonly HtmlDumpService _htmlDumpService = new();
+
+    private void HandleDragEnter() => isDragOver = true;
+    private void HandleDragLeave() => isDragOver = false;
+
+    private async Task HandleDrop(DragEventArgs e)
+    {
+        isDragOver = false;
+        // File drop is handled via InputFile
+    }
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        await ProcessFile(file);
+    }
+
+    private async Task ProcessFile(IBrowserFile file)
+    {
+        try
+        {
+            isProcessing = true;
+            errorMessage = "";
+            htmlReport = "";
+            progressMessage = "Reading file...";
+            StateHasChanged();
+
+            // Read file content
+            using var stream = file.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024); // 100MB
+            using var reader = new StreamReader(stream);
+            var content = await reader.ReadToEndAsync();
+
+            progressMessage = "Parsing diagnostics...";
+            StateHasChanged();
+            await Task.Delay(10); // Allow UI to update
+
+            // Analyze diagnostics
+            var result = _diagnosticsService.AnalyzeDiagnostics(content, latencyThreshold);
+
+            progressMessage = "Generating report...";
+            StateHasChanged();
+            await Task.Delay(10);
+
+            // Generate HTML report (extract body content only)
+            var fullHtml = _htmlDumpService.GenerateHtml(result);
+            htmlReport = ExtractBodyContent(fullHtml);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error processing file: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+            progressMessage = "";
+            StateHasChanged();
+        }
+    }
+
+    private string ExtractBodyContent(string fullHtml)
+    {
+        // Extract content between <body> and </body> tags, and include styles
+        var styleStart = fullHtml.IndexOf("<style>");
+        var styleEnd = fullHtml.IndexOf("</style>") + "</style>".Length;
+        var styles = styleStart >= 0 && styleEnd > styleStart 
+            ? fullHtml.Substring(styleStart, styleEnd - styleStart) 
+            : "";
+
+        var bodyStart = fullHtml.IndexOf("<body>");
+        var bodyEnd = fullHtml.IndexOf("</body>");
+        
+        if (bodyStart >= 0 && bodyEnd > bodyStart)
+        {
+            var bodyContent = fullHtml.Substring(bodyStart + "<body>".Length, bodyEnd - bodyStart - "<body>".Length);
+            return styles + bodyContent;
+        }
+        
+        return fullHtml;
+    }
+
+    private async Task DownloadReport()
+    {
+        if (string.IsNullOrEmpty(htmlReport)) return;
+
+        var fullHtml = _htmlDumpService.GenerateHtml(
+            _diagnosticsService.AnalyzeDiagnostics("", latencyThreshold));
+        
+        // Create a proper HTML document for download
+        var downloadHtml = $@"<!DOCTYPE html>
+<html>
+<head>
+<meta charset=""UTF-8"">
+<title>Cosmos Diagnostics Report</title>
+</head>
+<body>
+{htmlReport}
+</body>
+</html>";
+
+        await JSRuntime.InvokeVoidAsync("downloadFile", "DiagnosticsReport.html", downloadHtml);
+    }
+}
