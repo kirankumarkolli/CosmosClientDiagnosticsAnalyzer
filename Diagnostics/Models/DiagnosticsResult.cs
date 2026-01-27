@@ -11,6 +11,19 @@ public class DiagnosticsResult
     public List<GroupedResult> ResourceTypeGroups { get; set; } = new();
     public List<GroupedResult> StatusCodeGroups { get; set; } = new();
     public List<TransportEventGroup> TransportEventGroups { get; set; } = new();
+    
+    // Store all high latency diagnostics for drill-down
+    public List<DiagnosticEntry> AllHighLatencyDiagnostics { get; set; } = new();
+}
+
+public class DiagnosticEntry
+{
+    public string? Name { get; set; }
+    public string? StartTime { get; set; }
+    public double Duration { get; set; }
+    public int DirectCallCount { get; set; }
+    public int GatewayCallCount { get; set; }
+    public int TotalCallCount { get; set; }
 }
 
 public class OperationBucket

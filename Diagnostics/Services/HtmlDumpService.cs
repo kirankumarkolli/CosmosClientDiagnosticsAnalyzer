@@ -37,8 +37,25 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>📦 Operation Buckets</h2>");
-            sb.AppendLine(DumpTable("OperationName Buckets", result.OperationBuckets));
+            sb.AppendLine("<p class='note'>Click on a bucket name to see related entries</p>");
+            sb.AppendLine(DumpOperationBucketsTable(result.OperationBuckets));
             sb.AppendLine("</div>");
+            
+            // Hidden sections for each bucket's entries
+            foreach (var bucket in result.OperationBuckets)
+            {
+                var bucketEntries = result.AllHighLatencyDiagnostics
+                    .Where(e => e.Name == bucket.Bucket)
+                    .Take(50)
+                    .ToList();
+                    
+                var bucketId = GetSafeId(bucket.Bucket);
+                sb.AppendLine($"<div id='bucket-{bucketId}' class='section bucket-details' style='display:none;'>");
+                sb.AppendLine($"<h2>📋 Entries for: {System.Web.HttpUtility.HtmlEncode(bucket.Bucket)}</h2>");
+                sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('bucket-{bucketId}').style.display='none'\">✕ Close</button>");
+                sb.AppendLine(DumpTable($"Showing {bucketEntries.Count} of {bucket.Count} entries", bucketEntries));
+                sb.AppendLine("</div>");
+            }
         }
         
         // High Latency Network Interactions
@@ -172,6 +189,60 @@ public class HtmlDumpService
         sb.AppendLine("</div>");
         
         return sb.ToString();
+    }
+
+    private string DumpOperationBucketsTable(List<OperationBucket> buckets)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine("<div class='dump-header'>OperationName Buckets</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th class='row-num'>#</th>");
+        sb.AppendLine("<th>Bucket</th>");
+        sb.AppendLine("<th>Min</th>");
+        sb.AppendLine("<th>Max</th>");
+        sb.AppendLine("<th>Min NW Count</th>");
+        sb.AppendLine("<th>Max NW Count</th>");
+        sb.AppendLine("<th>Count</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        int rowNum = 0;
+        foreach (var bucket in buckets)
+        {
+            rowNum++;
+            var bucketId = GetSafeId(bucket.Bucket);
+            sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")}'>");
+            sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
+            sb.AppendLine($"<td><a href='#' class='bucket-link' onclick=\"showBucket('{bucketId}'); return false;\">{System.Web.HttpUtility.HtmlEncode(bucket.Bucket)}</a></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.Min:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.Max:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.MinNWCount:N0}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.MaxNWCount:N0}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{bucket.Count:N0}</span></td>");
+            sb.AppendLine("</tr>");
+        }
+        sb.AppendLine("</tbody>");
+        
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private static string GetSafeId(string? name)
+    {
+        if (string.IsNullOrEmpty(name)) return "unknown";
+        // Create a safe HTML id from the name
+        return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(name))
+            .Replace("+", "-")
+            .Replace("/", "_")
+            .Replace("=", "");
     }
 
     private static string FormatPropertyName(string name)
@@ -383,6 +454,48 @@ summary:hover {
     .dump-table { font-size: 11px; }
     .dump-table th, .dump-table td { padding: 5px 8px; }
 }
+
+/* Clickable bucket links */
+.bucket-link {
+    color: #4fc3f7;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.bucket-link:hover {
+    color: #81d4fa;
+    text-decoration: underline;
+}
+
+/* Bucket details section */
+.bucket-details {
+    position: relative;
+    border: 2px solid #4fc3f7;
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.btn-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.btn-close:hover {
+    background: #c82333;
+}
 </style>";
     }
 
@@ -390,19 +503,36 @@ summary:hover {
     {
         return @"
 <script>
-// Add click-to-copy for cell values
+// Add click-to-copy for cell values (excluding links)
 document.querySelectorAll('.dump-table td').forEach(cell => {
-    cell.addEventListener('click', function() {
-        const text = this.innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            const original = this.style.background;
-            this.style.background = '#094771';
-            setTimeout(() => this.style.background = original, 200);
+    if (!cell.querySelector('a')) {
+        cell.addEventListener('click', function() {
+            const text = this.innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const original = this.style.background;
+                this.style.background = '#094771';
+                setTimeout(() => this.style.background = original, 200);
+            });
         });
-    });
-    cell.style.cursor = 'pointer';
-    cell.title = 'Click to copy';
+        cell.style.cursor = 'pointer';
+        cell.title = 'Click to copy';
+    }
 });
+
+// Show bucket details
+function showBucket(bucketId) {
+    // Hide all bucket details first
+    document.querySelectorAll('.bucket-details').forEach(el => {
+        el.style.display = 'none';
+    });
+    
+    // Show the selected bucket
+    const bucketEl = document.getElementById('bucket-' + bucketId);
+    if (bucketEl) {
+        bucketEl.style.display = 'block';
+        bucketEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
 </script>";
     }
 }

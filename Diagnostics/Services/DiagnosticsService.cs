@@ -49,6 +49,20 @@ public class DiagnosticsService
         var highLatencyDiags = diagnostics.Where(e => e.Duration > latencyThreshold).ToList();
         result.HighLatencyEntries = highLatencyDiags.Count;
 
+        // Store all high latency diagnostics for drill-down
+        result.AllHighLatencyDiagnostics = highLatencyDiags
+            .Select(e => new DiagnosticEntry
+            {
+                Name = e.Name,
+                StartTime = e.StartTime,
+                Duration = e.Duration,
+                DirectCallCount = e.Summary?.GetDirectCallCount() ?? 0,
+                GatewayCallCount = e.Summary?.GetGatewayCallCount() ?? 0,
+                TotalCallCount = e.Summary?.GetTotalCallCount() ?? 0
+            })
+            .OrderByDescending(e => e.Duration)
+            .ToList();
+
         // Operation buckets
         result.OperationBuckets = highLatencyDiags
             .Where(e => e.Name != null)
