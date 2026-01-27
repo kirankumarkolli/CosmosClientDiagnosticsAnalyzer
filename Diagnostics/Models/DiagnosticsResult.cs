@@ -87,6 +87,12 @@ public class GroupedResult
     public double P95 { get; set; }
     public double Max { get; set; }
     public List<GroupedEntry> Entries { get; set; } = new();
+    
+    // Percentile-specific entries for drill-down
+    public List<GroupedEntry> EntriesAtP50 { get; set; } = new();
+    public List<GroupedEntry> EntriesAtP75 { get; set; } = new();
+    public List<GroupedEntry> EntriesAtP90 { get; set; } = new();
+    public List<GroupedEntry> EntriesAtP95 { get; set; } = new();
 }
 
 public class GroupedEntry
@@ -112,6 +118,12 @@ public class TransportEventGroup
     public double Max { get; set; }
     public List<PhaseDetail> PhaseDetails { get; set; } = new();
     public List<GroupedEntry> Entries { get; set; } = new();
+    
+    // Percentile-specific entries for drill-down
+    public List<GroupedEntry> EntriesAtP50 { get; set; } = new();
+    public List<GroupedEntry> EntriesAtP75 { get; set; } = new();
+    public List<GroupedEntry> EntriesAtP90 { get; set; } = new();
+    public List<GroupedEntry> EntriesAtP95 { get; set; } = new();
 }
 
 public class PhaseDetail

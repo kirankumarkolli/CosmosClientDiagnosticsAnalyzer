@@ -82,7 +82,7 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>📁 GroupBy {ResourceType → OperationType}</h2>");
-            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries at that level</p>");
             sb.AppendLine(DumpGroupedResultTable("Resource Type Groups", result.ResourceTypeGroups, "resourceType"));
             sb.AppendLine("</div>");
             
@@ -95,6 +95,12 @@ public class HtmlDumpService
                 sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
+                
+                // Hidden sections for percentile entries
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P50", group.P50, group.EntriesAtP50));
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P75", group.P75, group.EntriesAtP75));
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P90", group.P90, group.EntriesAtP90));
+                sb.AppendLine(CreatePercentileSection(group, "resourceType", "P95", group.P95, group.EntriesAtP95));
             }
         }
         
@@ -103,9 +109,10 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>🔢 GroupBy {StatusCode → SubStatusCode}</h2>");
-            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries at that level</p>");
             sb.AppendLine(DumpGroupedResultTable("Status Code Groups", result.StatusCodeGroups, "statusCode"));
             sb.AppendLine("</div>");
+            
             
             // Hidden sections for each group's entries
             foreach (var group in result.StatusCodeGroups)
@@ -116,6 +123,12 @@ public class HtmlDumpService
                 sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
+                
+                // Hidden sections for percentile entries
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P50", group.P50, group.EntriesAtP50));
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P75", group.P75, group.EntriesAtP75));
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P90", group.P90, group.EntriesAtP90));
+                sb.AppendLine(CreatePercentileSection(group, "statusCode", "P95", group.P95, group.EntriesAtP95));
             }
         }
         
@@ -124,7 +137,7 @@ public class HtmlDumpService
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>⚠️ GroupBy TransportException</h2>");
-            sb.AppendLine("<p class='note'>Click on a row to see related entries with JSON</p>");
+            sb.AppendLine("<p class='note'>Click on a row to see all entries, or click on a percentile value to see entries at that level</p>");
             sb.AppendLine(DumpGroupedResultTable("Transport Exception Groups", result.TransportExceptionGroups, "transportException"));
             sb.AppendLine("</div>");
             
@@ -137,6 +150,12 @@ public class HtmlDumpService
                 sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{groupId}').style.display='none'\">✕ Close</button>");
                 sb.AppendLine(DumpTable($"Showing {group.Entries.Count} of {group.Count} entries", group.Entries, sortable: true, tableId: $"group-table-{groupId}"));
                 sb.AppendLine("</div>");
+                
+                // Hidden sections for percentile entries
+                sb.AppendLine(CreatePercentileSection(group, "transportException", "P50", group.P50, group.EntriesAtP50));
+                sb.AppendLine(CreatePercentileSection(group, "transportException", "P75", group.P75, group.EntriesAtP75));
+                sb.AppendLine(CreatePercentileSection(group, "transportException", "P90", group.P90, group.EntriesAtP90));
+                sb.AppendLine(CreatePercentileSection(group, "transportException", "P95", group.P95, group.EntriesAtP95));
             }
         }
         
@@ -373,6 +392,7 @@ public class HtmlDumpService
         sb.AppendLine($"<div class='dump-header'>{title}</div>");
         sb.AppendLine("<table class='dump-table'>");
         
+        
         // Header
         sb.AppendLine("<thead><tr>");
         sb.AppendLine("<th class='row-num'>#</th>");
@@ -394,15 +414,19 @@ public class HtmlDumpService
         {
             rowNum++;
             var groupId = GetSafeId($"{prefix}-{group.Key}");
+            var p50Id = GetSafeId($"{prefix}-{group.Key}-p50");
+            var p75Id = GetSafeId($"{prefix}-{group.Key}-p75");
+            var p90Id = GetSafeId($"{prefix}-{group.Key}-p90");
+            var p95Id = GetSafeId($"{prefix}-{group.Key}-p95");
             sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")} clickable-row' onclick=\"showGroup('{groupId}')\">");
             sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
             sb.AppendLine($"<td><span class='string'>{System.Web.HttpUtility.HtmlEncode(group.Key)}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Min:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P50:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P75:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P90:F2}</span></td>");
-            sb.AppendLine($"<td><span class='number'>{group.P95:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p50Id}')\"><span class='number percentile-link'>{group.P50:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p75Id}')\"><span class='number percentile-link'>{group.P75:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p90Id}')\"><span class='number percentile-link'>{group.P90:F2}</span></td>");
+            sb.AppendLine($"<td class='clickable-cell' onclick=\"event.stopPropagation(); showGroup('{p95Id}')\"><span class='number percentile-link'>{group.P95:F2}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Max:F2}</span></td>");
             sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
@@ -504,9 +528,25 @@ public class HtmlDumpService
         }
         sb.AppendLine("</tbody>");
         
+        
         sb.AppendLine("</table>");
         sb.AppendLine("</div>");
         
+        return sb.ToString();
+    }
+
+    private string CreatePercentileSection(GroupedResult group, string prefix, string percentileName, double percentileValue, List<GroupedEntry> entries)
+    {
+        if (!entries.Any()) return string.Empty;
+        
+        var sb = new StringBuilder();
+        var percentileId = GetSafeId($"{prefix}-{group.Key}-{percentileName.ToLower()}");
+        sb.AppendLine($"<div id='group-{percentileId}' class='section bucket-details' style='display:none;'>");
+        sb.AppendLine($"<h2>📊 {percentileName} Entries for: {System.Web.HttpUtility.HtmlEncode(group.Key)}</h2>");
+        sb.AppendLine($"<p class='percentile-info'>Showing entries around {percentileName} ({percentileValue:F2}ms) ± 5%</p>");
+        sb.AppendLine($"<button class='btn-close' onclick=\"document.getElementById('group-{percentileId}').style.display='none'\">✕ Close</button>");
+        sb.AppendLine(DumpTable($"Showing {entries.Count} entries at {percentileName}", entries, sortable: true, tableId: $"percentile-table-{percentileId}"));
+        sb.AppendLine("</div>");
         return sb.ToString();
     }
 
@@ -751,6 +791,33 @@ summary:hover {
 
 .clickable-row:hover {
     background: #094771 !important;
+}
+
+/* Clickable percentile cells */
+.clickable-cell {
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.clickable-cell:hover {
+    background: #1a5276 !important;
+}
+
+.percentile-link {
+    color: #4fc3f7 !important;
+    text-decoration: underline;
+    text-decoration-style: dotted;
+}
+
+.percentile-link:hover {
+    color: #81d4fa !important;
+}
+
+.percentile-info {
+    color: #9cdcfe;
+    font-style: italic;
+    margin: 5px 0 15px 0;
+    font-size: 13px;
 }
 
 .btn-view {

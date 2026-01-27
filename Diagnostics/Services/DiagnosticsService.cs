@@ -186,115 +186,22 @@ public class DiagnosticsService
             .GroupBy(e => $"{e.ResourceType} -> {e.OperationType}")
             .Select(e => {
                 var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                var items = e.ToList();
+                var p50 = GetPercentile(durations, 50);
+                var p75 = GetPercentile(durations, 75);
+                var p90 = GetPercentile(durations, 90);
+                var p95 = GetPercentile(durations, 95);
                 return new GroupedResult 
                 { 
                     Key = e.Key, 
                     Count = e.Count(),
                     Min = durations.First(),
-                    P50 = GetPercentile(durations, 50),
-                    P75 = GetPercentile(durations, 75),
-                    P90 = GetPercentile(durations, 90),
-                    P95 = GetPercentile(durations, 95),
+                    P50 = p50,
+                    P75 = p75,
+                    P90 = p90,
+                    P95 = p95,
                     Max = durations.Last(),
-                    Entries = e.OrderByDescending(x => x.DurationInMs)
-                        .Take(50)
-                        .Select(x => new GroupedEntry
-                        {
-                            DurationInMs = x.DurationInMs,
-                            StatusCode = x.StatusCode,
-                            SubStatusCode = x.SubStatusCode,
-                            ResourceType = x.ResourceType,
-                            OperationType = x.OperationType,
-                            RawJson = x.RawJson
-                        })
-                        .ToList()
-                };
-            })
-            .OrderByDescending(e => e.Count)
-            .ToList();
-
-        // Group by Status Code -> Sub Status Code
-        result.StatusCodeGroups = highLatencyNWInteractions
-            .GroupBy(e => $"{e.StatusCode} -> {e.SubStatusCode}")
-            .Select(e => {
-                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
-                return new GroupedResult 
-                { 
-                    Key = e.Key, 
-                    Count = e.Count(),
-                    Min = durations.First(),
-                    P50 = GetPercentile(durations, 50),
-                    P75 = GetPercentile(durations, 75),
-                    P90 = GetPercentile(durations, 90),
-                    P95 = GetPercentile(durations, 95),
-                    Max = durations.Last(),
-                    Entries = e.OrderByDescending(x => x.DurationInMs)
-                        .Take(50)
-                        .Select(x => new GroupedEntry
-                        {
-                            DurationInMs = x.DurationInMs,
-                            StatusCode = x.StatusCode,
-                            SubStatusCode = x.SubStatusCode,
-                            ResourceType = x.ResourceType,
-                            OperationType = x.OperationType,
-                            RawJson = x.RawJson
-                        })
-                        .ToList()
-                };
-            })
-            .OrderByDescending(e => e.Count)
-            .ToList();
-
-        // Group by Transport Exception (using parsed message without timestamp)
-        result.TransportExceptionGroups = highLatencyNWInteractions
-            .Where(e => !string.IsNullOrEmpty(e.TransportExceptionMessage))
-            .GroupBy(e => e.TransportExceptionMessage ?? "Unknown")
-            .Select(e => {
-                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
-                return new GroupedResult 
-                { 
-                    Key = e.Key, 
-                    Count = e.Count(),
-                    Min = durations.First(),
-                    P50 = GetPercentile(durations, 50),
-                    P75 = GetPercentile(durations, 75),
-                    P90 = GetPercentile(durations, 90),
-                    P95 = GetPercentile(durations, 95),
-                    Max = durations.Last(),
-                    Entries = e.OrderByDescending(x => x.DurationInMs)
-                        .Take(50)
-                        .Select(x => new GroupedEntry
-                        {
-                            DurationInMs = x.DurationInMs,
-                            StatusCode = x.StatusCode,
-                            SubStatusCode = x.SubStatusCode,
-                            ResourceType = x.ResourceType,
-                            OperationType = x.OperationType,
-                            TransportErrorCode = x.TransportErrorCode,
-                            RawJson = x.RawJson
-                        })
-                        .ToList()
-                };
-            })
-            .OrderByDescending(e => e.Count)
-            .ToList();
-
-        // Group by Transport Event
-        result.TransportEventGroups = highLatencyNWInteractions
-            .GroupBy(e => e.LastEvent ?? TransportEvents.Unknown)
-            .Select(e => {
-                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
-                return new TransportEventGroup
-                {
-                    Status = e.Key,
-                    Count = e.Count(),
-                    Min = durations.First(),
-                    P50 = GetPercentile(durations, 50),
-                    P75 = GetPercentile(durations, 75),
-                    P90 = GetPercentile(durations, 90),
-                    P95 = GetPercentile(durations, 95),
-                    Max = durations.Last(),
-                    Entries = e.OrderByDescending(x => x.DurationInMs)
+                    Entries = items.OrderByDescending(x => x.DurationInMs)
                         .Take(50)
                         .Select(x => new GroupedEntry
                         {
@@ -306,6 +213,136 @@ public class DiagnosticsService
                             RawJson = x.RawJson
                         })
                         .ToList(),
+                    EntriesAtP50 = GetEntriesAtPercentile(items, p50),
+                    EntriesAtP75 = GetEntriesAtPercentile(items, p75),
+                    EntriesAtP90 = GetEntriesAtPercentile(items, p90),
+                    EntriesAtP95 = GetEntriesAtPercentile(items, p95)
+                };
+            })
+            .OrderByDescending(e => e.Count)
+            .ToList();
+
+        // Group by Status Code -> Sub Status Code
+        result.StatusCodeGroups = highLatencyNWInteractions
+            .GroupBy(e => $"{e.StatusCode} -> {e.SubStatusCode}")
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                var items = e.ToList();
+                var p50 = GetPercentile(durations, 50);
+                var p75 = GetPercentile(durations, 75);
+                var p90 = GetPercentile(durations, 90);
+                var p95 = GetPercentile(durations, 95);
+                return new GroupedResult 
+                { 
+                    Key = e.Key, 
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = p50,
+                    P75 = p75,
+                    P90 = p90,
+                    P95 = p95,
+                    Max = durations.Last(),
+                    Entries = items.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            RawJson = x.RawJson
+                        })
+                        .ToList(),
+                    EntriesAtP50 = GetEntriesAtPercentile(items, p50),
+                    EntriesAtP75 = GetEntriesAtPercentile(items, p75),
+                    EntriesAtP90 = GetEntriesAtPercentile(items, p90),
+                    EntriesAtP95 = GetEntriesAtPercentile(items, p95)
+                };
+            })
+            .OrderByDescending(e => e.Count)
+            .ToList();
+
+        // Group by Transport Exception (using parsed message without timestamp)
+        result.TransportExceptionGroups = highLatencyNWInteractions
+            .Where(e => !string.IsNullOrEmpty(e.TransportExceptionMessage))
+            .GroupBy(e => e.TransportExceptionMessage ?? "Unknown")
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                var items = e.ToList();
+                var p50 = GetPercentile(durations, 50);
+                var p75 = GetPercentile(durations, 75);
+                var p90 = GetPercentile(durations, 90);
+                var p95 = GetPercentile(durations, 95);
+                return new GroupedResult 
+                { 
+                    Key = e.Key, 
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = p50,
+                    P75 = p75,
+                    P90 = p90,
+                    P95 = p95,
+                    Max = durations.Last(),
+                    Entries = items.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            TransportErrorCode = x.TransportErrorCode,
+                            RawJson = x.RawJson
+                        })
+                        .ToList(),
+                    EntriesAtP50 = GetEntriesAtPercentile(items, p50),
+                    EntriesAtP75 = GetEntriesAtPercentile(items, p75),
+                    EntriesAtP90 = GetEntriesAtPercentile(items, p90),
+                    EntriesAtP95 = GetEntriesAtPercentile(items, p95)
+                };
+            })
+            .OrderByDescending(e => e.Count)
+            .ToList();
+
+
+        // Group by Transport Event
+        result.TransportEventGroups = highLatencyNWInteractions
+            .GroupBy(e => e.LastEvent ?? TransportEvents.Unknown)
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                var items = e.ToList();
+                var p50 = GetPercentile(durations, 50);
+                var p75 = GetPercentile(durations, 75);
+                var p90 = GetPercentile(durations, 90);
+                var p95 = GetPercentile(durations, 95);
+                return new TransportEventGroup
+                {
+                    Status = e.Key,
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = p50,
+                    P75 = p75,
+                    P90 = p90,
+                    P95 = p95,
+                    Max = durations.Last(),
+                    Entries = items.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            RawJson = x.RawJson
+                        })
+                        .ToList(),
+                    EntriesAtP50 = GetEntriesAtPercentile(items, p50),
+                    EntriesAtP75 = GetEntriesAtPercentile(items, p75),
+                    EntriesAtP90 = GetEntriesAtPercentile(items, p90),
+                    EntriesAtP95 = GetEntriesAtPercentile(items, p95),
                     PhaseDetails = e.GroupBy(x => x.BottleneckEventName)
                         .Select(g => new PhaseDetail
                         {
@@ -367,6 +404,33 @@ public class DiagnosticsService
         // Linear interpolation
         double weight = index - lower;
         return sortedValues[lower] * (1 - weight) + sortedValues[upper] * weight;
+    }
+
+    /// <summary>
+    /// Get entries around a specific percentile value (within 5% range)
+    /// </summary>
+    private static List<GroupedEntry> GetEntriesAtPercentile(IEnumerable<NetworkInteraction> items, double percentileValue, int maxEntries = 20)
+    {
+        // Get entries within 5% of the percentile value
+        double tolerance = percentileValue * 0.05;
+        double minValue = percentileValue - tolerance;
+        double maxValue = percentileValue + tolerance;
+
+        return items
+            .Where(x => x.DurationInMs >= minValue && x.DurationInMs <= maxValue)
+            .OrderByDescending(x => x.DurationInMs)
+            .Take(maxEntries)
+            .Select(x => new GroupedEntry
+            {
+                DurationInMs = x.DurationInMs,
+                StatusCode = x.StatusCode,
+                SubStatusCode = x.SubStatusCode,
+                ResourceType = x.ResourceType,
+                OperationType = x.OperationType,
+                TransportErrorCode = x.TransportErrorCode,
+                RawJson = x.RawJson
+            })
+            .ToList();
     }
 
     #region JSON Repair Logic
