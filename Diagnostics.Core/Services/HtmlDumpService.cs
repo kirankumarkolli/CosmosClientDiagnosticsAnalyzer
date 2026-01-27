@@ -423,15 +423,19 @@ public class HtmlDumpService
     {
         var sb = new StringBuilder();
         
-        // Metric selector
+        // Metric selector with checkboxes for multi-select
         sb.AppendLine("<div class='chart-controls'>");
-        sb.AppendLine("<label for='metricSelect'>Select Metric: </label>");
-        sb.AppendLine("<select id='metricSelect' onchange='updateChart()'>");
-        sb.AppendLine("<option value='cpu' selected>CPU (%)</option>");
-        sb.AppendLine("<option value='memory'>Memory (MB)</option>");
-        sb.AppendLine("<option value='threadWait'>Thread Wait Interval (ms)</option>");
-        sb.AppendLine("<option value='tcpConnections'>Open TCP Connections</option>");
-        sb.AppendLine("</select>");
+        sb.AppendLine("<span class='control-label'>Select Metrics:</span>");
+        sb.AppendLine("<div class='metric-checkboxes'>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkCpu' checked onchange='updateChartMulti()'><span class='metric-color' style='background:#4fc3f7'></span>CPU (%)</label>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkMemory' onchange='updateChartMulti()'><span class='metric-color' style='background:#81c784'></span>Memory (MB)</label>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkThreadWait' onchange='updateChartMulti()'><span class='metric-color' style='background:#ffb74d'></span>Thread Wait (ms)</label>");
+        sb.AppendLine("<label class='metric-checkbox'><input type='checkbox' id='chkTcpConnections' onchange='updateChartMulti()'><span class='metric-color' style='background:#ba68c8'></span>TCP Connections</label>");
+        sb.AppendLine("</div>");
+        sb.AppendLine("<div class='chart-buttons'>");
+        sb.AppendLine("<button class='btn-chart' onclick='selectAllMetrics()'>Select All</button>");
+        sb.AppendLine("<button class='btn-chart' onclick='clearAllMetrics()'>Clear All</button>");
+        sb.AppendLine("</div>");
         sb.AppendLine("</div>");
         
         // Chart container
@@ -1066,6 +1070,69 @@ summary:hover {
     background: #4a4a4a;
 }
 
+.control-label {
+    color: #dcdcdc;
+    font-weight: bold;
+    margin-right: 15px;
+}
+
+.metric-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.metric-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #dcdcdc;
+    cursor: pointer;
+    padding: 6px 12px;
+    background: #3c3c3c;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.metric-checkbox:hover {
+    background: #4a4a4a;
+}
+
+.metric-checkbox input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+.metric-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    display: inline-block;
+}
+
+.chart-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.btn-chart {
+    background: #3c3c3c;
+    color: #dcdcdc;
+    border: 1px solid #555;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.btn-chart:hover {
+    background: #4a4a4a;
+    border-color: #4fc3f7;
+}
+
 .chart-container {
     background: #1e1e1e;
     border-radius: 8px;
@@ -1103,6 +1170,7 @@ summary:hover {
     color: #9cdcfe;
     font-size: 12px;
 }
+
 
 .point-detail-item .value {
     color: #dcdcdc;
@@ -1573,18 +1641,7 @@ function initMetricsChart() {
         type: 'line',
         data: {
             labels: systemMetricsData.labels,
-            datasets: [{
-                label: 'CPU (%)',
-                data: systemMetricsData.cpu,
-                borderColor: '#4fc3f7',
-                backgroundColor: 'rgba(79, 195, 247, 0.1)',
-                borderWidth: 2,
-                pointRadius: 4,
-                pointHoverRadius: 8,
-                pointBackgroundColor: '#4fc3f7',
-                tension: 0.3,
-                fill: true
-            }]
+            datasets: []
         },
         options: {
             responsive: true,
@@ -1595,7 +1652,17 @@ function initMetricsChart() {
             },
             plugins: {
                 legend: {
-                    labels: { color: '#dcdcdc' }
+                    labels: { color: '#dcdcdc' },
+                    onClick: function(e, legendItem, legend) {
+                        // Toggle checkbox when legend is clicked
+                        const metricMap = { 'CPU (%)': 'chkCpu', 'Memory (MB)': 'chkMemory', 'Thread Wait (ms)': 'chkThreadWait', 'TCP Connections': 'chkTcpConnections' };
+                        const checkboxId = metricMap[legendItem.text];
+                        if (checkboxId) {
+                            const checkbox = document.getElementById(checkboxId);
+                            checkbox.checked = !checkbox.checked;
+                            updateChartMulti();
+                        }
+                    }
                 },
                 tooltip: {
                     backgroundColor: '#2d2d30',
@@ -1612,9 +1679,36 @@ function initMetricsChart() {
                     title: { display: true, text: 'Time', color: '#dcdcdc' }
                 },
                 y: {
-                    ticks: { color: '#9cdcfe' },
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    ticks: { color: '#4fc3f7' },
                     grid: { color: '#3e3e3e' },
-                    title: { display: true, text: 'Value', color: '#dcdcdc' }
+                    title: { display: true, text: 'CPU (%)', color: '#4fc3f7' }
+                },
+                y1: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    ticks: { color: '#81c784' },
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Memory (MB)', color: '#81c784' }
+                },
+                y2: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    ticks: { color: '#ffb74d' },
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'Thread Wait (ms)', color: '#ffb74d' }
+                },
+                y3: {
+                    type: 'linear',
+                    display: false,
+                    position: 'right',
+                    ticks: { color: '#ba68c8' },
+                    grid: { drawOnChartArea: false },
+                    title: { display: true, text: 'TCP Connections', color: '#ba68c8' }
                 }
             },
             onClick: (event, elements) => {
@@ -1625,43 +1719,84 @@ function initMetricsChart() {
             }
         }
     });
+    
+    // Initialize with checked metrics
+    updateChartMulti();
 }
 
-function updateChart() {
+
+const metricConfigs = {
+    cpu: { data: 'cpu', label: 'CPU (%)', color: '#4fc3f7', yAxisID: 'y' },
+    memory: { data: 'memory', label: 'Memory (MB)', color: '#81c784', yAxisID: 'y1' },
+    threadWait: { data: 'threadWait', label: 'Thread Wait (ms)', color: '#ffb74d', yAxisID: 'y2' },
+    tcpConnections: { data: 'tcpConnections', label: 'TCP Connections', color: '#ba68c8', yAxisID: 'y3' }
+};
+
+function updateChartMulti() {
     if (!metricsChart) return;
     
-    const metric = document.getElementById('metricSelect').value;
-    let data, label, color;
+    const datasets = [];
+    const activeAxes = new Set();
     
-    switch(metric) {
-        case 'cpu':
-            data = systemMetricsData.cpu;
-            label = 'CPU (%)';
-            color = '#4fc3f7';
-            break;
-        case 'memory':
-            data = systemMetricsData.memory;
-            label = 'Memory (MB)';
-            color = '#81c784';
-            break;
-        case 'threadWait':
-            data = systemMetricsData.threadWait;
-            label = 'Thread Wait Interval (ms)';
-            color = '#ffb74d';
-            break;
-        case 'tcpConnections':
-            data = systemMetricsData.tcpConnections;
-            label = 'Open TCP Connections';
-            color = '#ba68c8';
-            break;
+    if (document.getElementById('chkCpu').checked) {
+        datasets.push(createDataset('cpu'));
+        activeAxes.add('y');
+    }
+    if (document.getElementById('chkMemory').checked) {
+        datasets.push(createDataset('memory'));
+        activeAxes.add('y1');
+    }
+    if (document.getElementById('chkThreadWait').checked) {
+        datasets.push(createDataset('threadWait'));
+        activeAxes.add('y2');
+    }
+    if (document.getElementById('chkTcpConnections').checked) {
+        datasets.push(createDataset('tcpConnections'));
+        activeAxes.add('y3');
     }
     
-    metricsChart.data.datasets[0].data = data;
-    metricsChart.data.datasets[0].label = label;
-    metricsChart.data.datasets[0].borderColor = color;
-    metricsChart.data.datasets[0].pointBackgroundColor = color;
-    metricsChart.data.datasets[0].backgroundColor = color.replace(')', ', 0.1)').replace('rgb', 'rgba');
+    metricsChart.data.datasets = datasets;
+    
+    // Update Y-axis visibility
+    metricsChart.options.scales.y.display = activeAxes.has('y');
+    metricsChart.options.scales.y1.display = activeAxes.has('y1');
+    metricsChart.options.scales.y2.display = activeAxes.has('y2');
+    metricsChart.options.scales.y3.display = activeAxes.has('y3');
+    
     metricsChart.update();
+}
+
+function createDataset(metricKey) {
+    const config = metricConfigs[metricKey];
+    return {
+        label: config.label,
+        data: systemMetricsData[config.data],
+        borderColor: config.color,
+        backgroundColor: config.color + '1A',
+        borderWidth: 2,
+        pointRadius: 3,
+        pointHoverRadius: 6,
+        pointBackgroundColor: config.color,
+        tension: 0.3,
+        fill: false,
+        yAxisID: config.yAxisID
+    };
+}
+
+function selectAllMetrics() {
+    document.getElementById('chkCpu').checked = true;
+    document.getElementById('chkMemory').checked = true;
+    document.getElementById('chkThreadWait').checked = true;
+    document.getElementById('chkTcpConnections').checked = true;
+    updateChartMulti();
+}
+
+function clearAllMetrics() {
+    document.getElementById('chkCpu').checked = false;
+    document.getElementById('chkMemory').checked = false;
+    document.getElementById('chkThreadWait').checked = false;
+    document.getElementById('chkTcpConnections').checked = false;
+    updateChartMulti();
 }
 
 function showPointDetails(index) {
