@@ -381,8 +381,10 @@ public class HtmlDumpService
         sb.AppendLine("<thead><tr>");
         sb.AppendLine("<th>Metric</th>");
         sb.AppendLine("<th>Min</th>");
-        sb.AppendLine("<th>Avg</th>");
+        sb.AppendLine("<th>P50</th>");
+        sb.AppendLine("<th>P75</th>");
         sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>P95</th>");
         sb.AppendLine("<th>Max</th>");
         sb.AppendLine("</tr></thead>");
         
@@ -393,8 +395,10 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='odd'>");
         sb.AppendLine("<td><span class='string'>CPU (%)</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Min:F2}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Avg:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P50:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P75:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P90:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Cpu.P95:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Cpu.Max:F2}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -402,8 +406,10 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='even'>");
         sb.AppendLine("<td><span class='string'>Memory (MB)</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.Min / 1024 / 1024:F2}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.Memory.Avg / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.P50 / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.P75 / 1024 / 1024:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.P90 / 1024 / 1024:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.Memory.P95 / 1024 / 1024:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.Memory.Max / 1024 / 1024:F2}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -411,8 +417,10 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='odd'>");
         sb.AppendLine("<td><span class='string'>Thread Wait Interval (ms)</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Min:F2}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Avg:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P50:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P75:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P90:F2}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.P95:F2}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ThreadWaitIntervalInMs.Max:F2}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -420,8 +428,10 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='even'>");
         sb.AppendLine("<td><span class='string'>Open TCP Connections</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Min:N0}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Avg:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P50:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P75:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.P95:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfOpenTcpConnections.Max:N0}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -483,6 +493,7 @@ public class HtmlDumpService
         return sb.ToString();
     }
 
+
     private string DumpClientConfigTable(ClientConfigTimePlot metrics)
     {
         var sb = new StringBuilder();
@@ -495,8 +506,10 @@ public class HtmlDumpService
         sb.AppendLine("<thead><tr>");
         sb.AppendLine("<th>Metric</th>");
         sb.AppendLine("<th>Min</th>");
-        sb.AppendLine("<th>Avg</th>");
+        sb.AppendLine("<th>P50</th>");
+        sb.AppendLine("<th>P75</th>");
         sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>P95</th>");
         sb.AppendLine("<th>Max</th>");
         sb.AppendLine("</tr></thead>");
         
@@ -507,8 +520,10 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='odd'>");
         sb.AppendLine("<td><span class='string'>Processor Count</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.Min:N0}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.Avg:F1}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.P50:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.P75:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.P95:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.ProcessorCount.Max:N0}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -516,8 +531,10 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='even'>");
         sb.AppendLine("<td><span class='string'>Clients Created</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.Min:N0}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.Avg:F1}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.P50:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.P75:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.P95:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfClientsCreated.Max:N0}</span></td>");
         sb.AppendLine("</tr>");
         
@@ -525,15 +542,17 @@ public class HtmlDumpService
         sb.AppendLine("<tr class='odd'>");
         sb.AppendLine("<td><span class='string'>Active Clients</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.Min:N0}</span></td>");
-        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.Avg:F1}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.P50:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.P75:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.P90:N0}</span></td>");
+        sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.P95:N0}</span></td>");
         sb.AppendLine($"<td><span class='number'>{metrics.NumberOfActiveClients.Max:N0}</span></td>");
         sb.AppendLine("</tr>");
         
         // Unique Machines row
         sb.AppendLine("<tr class='even'>");
         sb.AppendLine("<td><span class='string'>Unique Machines</span></td>");
-        sb.AppendLine($"<td colspan='4'><span class='number'>{metrics.UniqueMachineIds.Count}</span> machine(s)</td>");
+        sb.AppendLine($"<td colspan='6'><span class='number'>{metrics.UniqueMachineIds.Count}</span> machine(s)</td>");
         sb.AppendLine("</tr>");
         
         sb.AppendLine("</tbody>");

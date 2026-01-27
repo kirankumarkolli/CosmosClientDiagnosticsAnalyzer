@@ -463,35 +463,37 @@ public class DiagnosticsService
 
         // Calculate ProcessorCount statistics
         var processorValues = orderedSnapshots.Select(s => (double)s.ProcessorCount).OrderBy(v => v).ToList();
-        result.ProcessorCount = new MetricStatistics
-        {
-            Min = processorValues.First(),
-            Max = processorValues.Last(),
-            Avg = processorValues.Average(),
-            P90 = GetPercentile(processorValues, 90)
-        };
+        result.ProcessorCount = CalculateMetricStatistics(processorValues);
 
         // Calculate NumberOfClientsCreated statistics
         var clientsCreatedValues = orderedSnapshots.Select(s => (double)s.NumberOfClientsCreated).OrderBy(v => v).ToList();
-        result.NumberOfClientsCreated = new MetricStatistics
-        {
-            Min = clientsCreatedValues.First(),
-            Max = clientsCreatedValues.Last(),
-            Avg = clientsCreatedValues.Average(),
-            P90 = GetPercentile(clientsCreatedValues, 90)
-        };
+        result.NumberOfClientsCreated = CalculateMetricStatistics(clientsCreatedValues);
 
         // Calculate NumberOfActiveClients statistics
         var activeClientsValues = orderedSnapshots.Select(s => (double)s.NumberOfActiveClients).OrderBy(v => v).ToList();
-        result.NumberOfActiveClients = new MetricStatistics
-        {
-            Min = activeClientsValues.First(),
-            Max = activeClientsValues.Last(),
-            Avg = activeClientsValues.Average(),
-            P90 = GetPercentile(activeClientsValues, 90)
-        };
+        result.NumberOfActiveClients = CalculateMetricStatistics(activeClientsValues);
 
         return result;
+    }
+
+    /// <summary>
+    /// Calculate all statistics for a metric including percentiles
+    /// </summary>
+    private MetricStatistics CalculateMetricStatistics(List<double> sortedValues)
+    {
+        if (sortedValues == null || !sortedValues.Any())
+            return new MetricStatistics();
+            
+        return new MetricStatistics
+        {
+            Min = sortedValues.First(),
+            P50 = GetPercentile(sortedValues, 50),
+            P75 = GetPercentile(sortedValues, 75),
+            P90 = GetPercentile(sortedValues, 90),
+            P95 = GetPercentile(sortedValues, 95),
+            Max = sortedValues.Last(),
+            Avg = sortedValues.Average()
+        };
     }
 
     /// <summary>
@@ -544,43 +546,19 @@ public class DiagnosticsService
 
         // Calculate CPU statistics
         var cpuValues = orderedSnapshots.Select(s => s.Cpu).OrderBy(v => v).ToList();
-        result.Cpu = new MetricStatistics
-        {
-            Min = cpuValues.First(),
-            Max = cpuValues.Last(),
-            Avg = cpuValues.Average(),
-            P90 = GetPercentile(cpuValues, 90)
-        };
+        result.Cpu = CalculateMetricStatistics(cpuValues);
 
-        // Calculate Memory statistics (convert to MB for readability)
+        // Calculate Memory statistics
         var memoryValues = orderedSnapshots.Select(s => (double)s.Memory).OrderBy(v => v).ToList();
-        result.Memory = new MetricStatistics
-        {
-            Min = memoryValues.First(),
-            Max = memoryValues.Last(),
-            Avg = memoryValues.Average(),
-            P90 = GetPercentile(memoryValues, 90)
-        };
+        result.Memory = CalculateMetricStatistics(memoryValues);
 
         // Calculate ThreadWaitIntervalInMs statistics
         var threadWaitValues = orderedSnapshots.Select(s => s.ThreadWaitIntervalInMs).OrderBy(v => v).ToList();
-        result.ThreadWaitIntervalInMs = new MetricStatistics
-        {
-            Min = threadWaitValues.First(),
-            Max = threadWaitValues.Last(),
-            Avg = threadWaitValues.Average(),
-            P90 = GetPercentile(threadWaitValues, 90)
-        };
+        result.ThreadWaitIntervalInMs = CalculateMetricStatistics(threadWaitValues);
 
         // Calculate TCP connection statistics
         var tcpValues = orderedSnapshots.Select(s => (double)s.NumberOfOpenTcpConnections).OrderBy(v => v).ToList();
-        result.NumberOfOpenTcpConnections = new MetricStatistics
-        {
-            Min = tcpValues.First(),
-            Max = tcpValues.Last(),
-            Avg = tcpValues.Average(),
-            P90 = GetPercentile(tcpValues, 90)
-        };
+        result.NumberOfOpenTcpConnections = CalculateMetricStatistics(tcpValues);
 
         return result;
     }

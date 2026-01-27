@@ -84,9 +84,12 @@ public class SystemMetricsTimePlot
 public class MetricStatistics
 {
     public double Min { get; set; }
+    public double P50 { get; set; }
+    public double P75 { get; set; }
+    public double P90 { get; set; }
+    public double P95 { get; set; }
     public double Max { get; set; }
     public double Avg { get; set; }
-    public double P90 { get; set; }
 }
 
 public class SystemInfoSnapshot
