@@ -184,22 +184,31 @@ public class DiagnosticsService
         // Group by Resource Type -> Operation Type
         result.ResourceTypeGroups = highLatencyNWInteractions
             .GroupBy(e => $"{e.ResourceType} -> {e.OperationType}")
-            .Select(e => new GroupedResult 
-            { 
-                Key = e.Key, 
-                Count = e.Count(),
-                Entries = e.OrderByDescending(x => x.DurationInMs)
-                    .Take(50)
-                    .Select(x => new GroupedEntry
-                    {
-                        DurationInMs = x.DurationInMs,
-                        StatusCode = x.StatusCode,
-                        SubStatusCode = x.SubStatusCode,
-                        ResourceType = x.ResourceType,
-                        OperationType = x.OperationType,
-                        RawJson = x.RawJson
-                    })
-                    .ToList()
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                return new GroupedResult 
+                { 
+                    Key = e.Key, 
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = GetPercentile(durations, 50),
+                    P75 = GetPercentile(durations, 75),
+                    P90 = GetPercentile(durations, 90),
+                    P95 = GetPercentile(durations, 95),
+                    Max = durations.Last(),
+                    Entries = e.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            RawJson = x.RawJson
+                        })
+                        .ToList()
+                };
             })
             .OrderByDescending(e => e.Count)
             .ToList();
@@ -207,22 +216,31 @@ public class DiagnosticsService
         // Group by Status Code -> Sub Status Code
         result.StatusCodeGroups = highLatencyNWInteractions
             .GroupBy(e => $"{e.StatusCode} -> {e.SubStatusCode}")
-            .Select(e => new GroupedResult 
-            { 
-                Key = e.Key, 
-                Count = e.Count(),
-                Entries = e.OrderByDescending(x => x.DurationInMs)
-                    .Take(50)
-                    .Select(x => new GroupedEntry
-                    {
-                        DurationInMs = x.DurationInMs,
-                        StatusCode = x.StatusCode,
-                        SubStatusCode = x.SubStatusCode,
-                        ResourceType = x.ResourceType,
-                        OperationType = x.OperationType,
-                        RawJson = x.RawJson
-                    })
-                    .ToList()
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                return new GroupedResult 
+                { 
+                    Key = e.Key, 
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = GetPercentile(durations, 50),
+                    P75 = GetPercentile(durations, 75),
+                    P90 = GetPercentile(durations, 90),
+                    P95 = GetPercentile(durations, 95),
+                    Max = durations.Last(),
+                    Entries = e.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            RawJson = x.RawJson
+                        })
+                        .ToList()
+                };
             })
             .OrderByDescending(e => e.Count)
             .ToList();
@@ -231,23 +249,32 @@ public class DiagnosticsService
         result.TransportExceptionGroups = highLatencyNWInteractions
             .Where(e => !string.IsNullOrEmpty(e.TransportExceptionMessage))
             .GroupBy(e => e.TransportExceptionMessage ?? "Unknown")
-            .Select(e => new GroupedResult 
-            { 
-                Key = e.Key, 
-                Count = e.Count(),
-                Entries = e.OrderByDescending(x => x.DurationInMs)
-                    .Take(50)
-                    .Select(x => new GroupedEntry
-                    {
-                        DurationInMs = x.DurationInMs,
-                        StatusCode = x.StatusCode,
-                        SubStatusCode = x.SubStatusCode,
-                        ResourceType = x.ResourceType,
-                        OperationType = x.OperationType,
-                        TransportErrorCode = x.TransportErrorCode,
-                        RawJson = x.RawJson
-                    })
-                    .ToList()
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                return new GroupedResult 
+                { 
+                    Key = e.Key, 
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = GetPercentile(durations, 50),
+                    P75 = GetPercentile(durations, 75),
+                    P90 = GetPercentile(durations, 90),
+                    P95 = GetPercentile(durations, 95),
+                    Max = durations.Last(),
+                    Entries = e.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            TransportErrorCode = x.TransportErrorCode,
+                            RawJson = x.RawJson
+                        })
+                        .ToList()
+                };
             })
             .OrderByDescending(e => e.Count)
             .ToList();
@@ -255,29 +282,37 @@ public class DiagnosticsService
         // Group by Transport Event
         result.TransportEventGroups = highLatencyNWInteractions
             .GroupBy(e => e.LastEvent ?? TransportEvents.Unknown)
-            .Select(e => new TransportEventGroup
-            {
-                Status = e.Key,
-                Count = e.Count(),
-                Entries = e.OrderByDescending(x => x.DurationInMs)
-                    .Take(50)
-                    .Select(x => new GroupedEntry
-                    {
-                        DurationInMs = x.DurationInMs,
-                        StatusCode = x.StatusCode,
-                        SubStatusCode = x.SubStatusCode,
-                        ResourceType = x.ResourceType,
-                        OperationType = x.OperationType,
-                        RawJson = x.RawJson
-                    })
-                    .ToList(),
-                PhaseDetails = e.GroupBy(x => x.BottleneckEventName)
-                    .Select(g => new PhaseDetail
-                    {
-                        Phase = g.Key,
-                        Count = g.Count(),
-                        MinDuration = g.Min(y => y.DurationInMs),
-                        MaxDuration = g.Max(y => y.DurationInMs),
+            .Select(e => {
+                var durations = e.Select(x => x.DurationInMs).OrderBy(x => x).ToList();
+                return new TransportEventGroup
+                {
+                    Status = e.Key,
+                    Count = e.Count(),
+                    Min = durations.First(),
+                    P50 = GetPercentile(durations, 50),
+                    P75 = GetPercentile(durations, 75),
+                    P90 = GetPercentile(durations, 90),
+                    P95 = GetPercentile(durations, 95),
+                    Max = durations.Last(),
+                    Entries = e.OrderByDescending(x => x.DurationInMs)
+                        .Take(50)
+                        .Select(x => new GroupedEntry
+                        {
+                            DurationInMs = x.DurationInMs,
+                            StatusCode = x.StatusCode,
+                            SubStatusCode = x.SubStatusCode,
+                            ResourceType = x.ResourceType,
+                            OperationType = x.OperationType,
+                            RawJson = x.RawJson
+                        })
+                        .ToList(),
+                    PhaseDetails = e.GroupBy(x => x.BottleneckEventName)
+                        .Select(g => new PhaseDetail
+                        {
+                            Phase = g.Key,
+                            Count = g.Count(),
+                            MinDuration = g.Min(y => y.DurationInMs),
+                            MaxDuration = g.Max(y => y.DurationInMs),
                         MinStartTime = null, // Simplified for now
                         MaxStartTime = null,
                         EndpointCount = g.Where(y => y.StorePhysicalAddress != null)
@@ -303,6 +338,7 @@ public class DiagnosticsService
                             .ToList()
                     })
                     .ToList()
+                };
             })
             .OrderByDescending(e => e.Count)
             .ToList();

@@ -146,6 +146,10 @@ public class HtmlDumpService
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>🚀 GroupBy LastTransportEvent</h2>");
             sb.AppendLine("<p class='note'>Click on an event to see related entries with JSON</p>");
+            
+            // Summary table with percentiles
+            sb.AppendLine(DumpTransportEventSummaryTable(result.TransportEventGroups));
+            
             foreach (var group in result.TransportEventGroups)
             {
                 var groupId = GetSafeId($"transport-{group.Status}");
@@ -374,6 +378,12 @@ public class HtmlDumpService
         sb.AppendLine("<th class='row-num'>#</th>");
         sb.AppendLine("<th>Key</th>");
         sb.AppendLine("<th>Count</th>");
+        sb.AppendLine("<th>Min</th>");
+        sb.AppendLine("<th>P50</th>");
+        sb.AppendLine("<th>P75</th>");
+        sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>P95</th>");
+        sb.AppendLine("<th>Max</th>");
         sb.AppendLine("<th>Action</th>");
         sb.AppendLine("</tr></thead>");
         
@@ -388,6 +398,12 @@ public class HtmlDumpService
             sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
             sb.AppendLine($"<td><span class='string'>{System.Web.HttpUtility.HtmlEncode(group.Key)}</span></td>");
             sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Min:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P50:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P75:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P90:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P95:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Max:F2}</span></td>");
             sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
         }
@@ -418,6 +434,7 @@ public class HtmlDumpService
         sb.AppendLine("<th>Action</th>");
         sb.AppendLine("</tr></thead>");
         
+        
         // Body
         sb.AppendLine("<tbody>");
         int rowNum = 0;
@@ -433,6 +450,56 @@ public class HtmlDumpService
             sb.AppendLine($"<td><span class='number'>{phase.MaxDuration:F2}</span></td>");
             sb.AppendLine($"<td><span class='number'>{phase.EndpointCount:N0}</span></td>");
             sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{phaseId}')\">📄 View Entries</button></td>");
+            sb.AppendLine("</tr>");
+        }
+        sb.AppendLine("</tbody>");
+        
+        sb.AppendLine("</table>");
+        sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpTransportEventSummaryTable(List<TransportEventGroup> groups)
+    {
+        var sb = new StringBuilder();
+        
+        sb.AppendLine("<div class='dump-container'>");
+        sb.AppendLine("<div class='dump-header'>Transport Event Summary</div>");
+        sb.AppendLine("<table class='dump-table'>");
+        
+        // Header
+        sb.AppendLine("<thead><tr>");
+        sb.AppendLine("<th class='row-num'>#</th>");
+        sb.AppendLine("<th>Event</th>");
+        sb.AppendLine("<th>Count</th>");
+        sb.AppendLine("<th>Min</th>");
+        sb.AppendLine("<th>P50</th>");
+        sb.AppendLine("<th>P75</th>");
+        sb.AppendLine("<th>P90</th>");
+        sb.AppendLine("<th>P95</th>");
+        sb.AppendLine("<th>Max</th>");
+        sb.AppendLine("<th>Action</th>");
+        sb.AppendLine("</tr></thead>");
+        
+        // Body
+        sb.AppendLine("<tbody>");
+        int rowNum = 0;
+        foreach (var group in groups)
+        {
+            rowNum++;
+            var groupId = GetSafeId($"transport-{group.Status}");
+            sb.AppendLine($"<tr class='{(rowNum % 2 == 0 ? "even" : "odd")} clickable-row' onclick=\"showGroup('{groupId}')\">");
+            sb.AppendLine($"<td class='row-num'>{rowNum}</td>");
+            sb.AppendLine($"<td><span class='enum'>{group.Status}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Count:N0}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Min:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P50:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P75:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P90:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.P95:F2}</span></td>");
+            sb.AppendLine($"<td><span class='number'>{group.Max:F2}</span></td>");
+            sb.AppendLine($"<td><button class='btn-view' onclick=\"event.stopPropagation(); showGroup('{groupId}')\">📄 View Entries</button></td>");
             sb.AppendLine("</tr>");
         }
         sb.AppendLine("</tbody>");

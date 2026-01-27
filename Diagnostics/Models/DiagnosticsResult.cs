@@ -80,6 +80,12 @@ public class GroupedResult
 {
     public string? Key { get; set; }
     public int Count { get; set; }
+    public double Min { get; set; }
+    public double P50 { get; set; }
+    public double P75 { get; set; }
+    public double P90 { get; set; }
+    public double P95 { get; set; }
+    public double Max { get; set; }
     public List<GroupedEntry> Entries { get; set; } = new();
 }
 
@@ -98,6 +104,12 @@ public class TransportEventGroup
 {
     public TransportEvents Status { get; set; }
     public int Count { get; set; }
+    public double Min { get; set; }
+    public double P50 { get; set; }
+    public double P75 { get; set; }
+    public double P90 { get; set; }
+    public double P95 { get; set; }
+    public double Max { get; set; }
     public List<PhaseDetail> PhaseDetails { get; set; } = new();
     public List<GroupedEntry> Entries { get; set; } = new();
 }
