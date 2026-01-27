@@ -34,12 +34,13 @@ public class HtmlDumpService
         sb.AppendLine("</div>");
         
         // System Metrics Time Plot
-        if (result.SystemMetrics != null)
+        if (result.SystemMetrics != null && result.SystemMetrics.Snapshots.Any())
         {
             sb.AppendLine("<div class='section'>");
             sb.AppendLine("<h2>📈 System Metrics Time Plot</h2>");
-            sb.AppendLine($"<p class='note'>Based on {result.SystemMetrics.SampleCount} samples from {result.SystemMetrics.StartTime:HH:mm:ss} to {result.SystemMetrics.EndTime:HH:mm:ss}</p>");
+            sb.AppendLine($"<p class='note'>Based on {result.SystemMetrics.SampleCount} samples from {result.SystemMetrics.StartTime:HH:mm:ss} to {result.SystemMetrics.EndTime:HH:mm:ss}. Click on chart points to see details.</p>");
             sb.AppendLine(DumpSystemMetricsTable(result.SystemMetrics));
+            sb.AppendLine(DumpSystemMetricsChart(result.SystemMetrics));
             sb.AppendLine("</div>");
         }
         
@@ -414,6 +415,53 @@ public class HtmlDumpService
         sb.AppendLine("</tbody>");
         sb.AppendLine("</table>");
         sb.AppendLine("</div>");
+        
+        return sb.ToString();
+    }
+
+    private string DumpSystemMetricsChart(SystemMetricsTimePlot metrics)
+    {
+        var sb = new StringBuilder();
+        
+        // Metric selector
+        sb.AppendLine("<div class='chart-controls'>");
+        sb.AppendLine("<label for='metricSelect'>Select Metric: </label>");
+        sb.AppendLine("<select id='metricSelect' onchange='updateChart()'>");
+        sb.AppendLine("<option value='cpu' selected>CPU (%)</option>");
+        sb.AppendLine("<option value='memory'>Memory (MB)</option>");
+        sb.AppendLine("<option value='threadWait'>Thread Wait Interval (ms)</option>");
+        sb.AppendLine("<option value='tcpConnections'>Open TCP Connections</option>");
+        sb.AppendLine("</select>");
+        sb.AppendLine("</div>");
+        
+        // Chart container
+        sb.AppendLine("<div class='chart-container'>");
+        sb.AppendLine("<canvas id='metricsChart'></canvas>");
+        sb.AppendLine("</div>");
+        
+        // Selected point details
+        sb.AppendLine("<div id='pointDetails' class='point-details' style='display:none;'>");
+        sb.AppendLine("<h4>📍 Selected Point Details</h4>");
+        sb.AppendLine("<div id='pointDetailsContent'></div>");
+        sb.AppendLine("</div>");
+        
+        // Embed the data as JSON
+        sb.AppendLine("<script>");
+        sb.AppendLine("const systemMetricsData = {");
+        sb.AppendLine($"  labels: [{string.Join(",", metrics.Snapshots.Select(s => $"'{s.DateUtc:HH:mm:ss}'"))}],");
+        sb.AppendLine($"  cpu: [{string.Join(",", metrics.Snapshots.Select(s => s.Cpu.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))}],");
+        sb.AppendLine($"  memory: [{string.Join(",", metrics.Snapshots.Select(s => (s.Memory / 1024.0 / 1024.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))}],");
+        sb.AppendLine($"  threadWait: [{string.Join(",", metrics.Snapshots.Select(s => s.ThreadWaitIntervalInMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)))}],");
+        sb.AppendLine($"  tcpConnections: [{string.Join(",", metrics.Snapshots.Select(s => s.NumberOfOpenTcpConnections))}],");
+        sb.AppendLine("  details: [");
+        foreach (var (snapshot, i) in metrics.Snapshots.Select((s, i) => (s, i)))
+        {
+            var comma = i < metrics.Snapshots.Count - 1 ? "," : "";
+            sb.AppendLine($"    {{ dateUtc: '{snapshot.DateUtc:yyyy-MM-dd HH:mm:ss.fff}', cpu: {snapshot.Cpu.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, memory: {snapshot.Memory}, threadWait: {snapshot.ThreadWaitIntervalInMs.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, tcpConnections: {snapshot.NumberOfOpenTcpConnections}, isThreadStarving: {snapshot.IsThreadStarving.ToString().ToLower()}, availableThreads: {snapshot.AvailableThreads} }}{comma}");
+        }
+        sb.AppendLine("  ]");
+        sb.AppendLine("};");
+        sb.AppendLine("</script>");
         
         return sb.ToString();
     }
@@ -991,6 +1039,81 @@ summary:hover {
     background: #1177bb;
 }
 
+/* Chart controls and container */
+.chart-controls {
+    margin: 15px 0;
+    padding: 10px;
+    background: #2d2d30;
+    border-radius: 6px;
+}
+
+.chart-controls label {
+    color: #dcdcdc;
+    margin-right: 10px;
+}
+
+.chart-controls select {
+    background: #3c3c3c;
+    color: #dcdcdc;
+    border: 1px solid #4fc3f7;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.chart-controls select:hover {
+    background: #4a4a4a;
+}
+
+.chart-container {
+    background: #1e1e1e;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 15px 0;
+    height: 400px;
+}
+
+.point-details {
+    background: #2d2d30;
+    border: 1px solid #4fc3f7;
+    border-radius: 6px;
+    padding: 15px;
+    margin-top: 15px;
+}
+
+.point-details h4 {
+    margin: 0 0 10px 0;
+    color: #4fc3f7;
+}
+
+.point-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+}
+
+.point-detail-item {
+    background: #1e1e1e;
+    padding: 8px 12px;
+    border-radius: 4px;
+}
+
+.point-detail-item .label {
+    color: #9cdcfe;
+    font-size: 12px;
+}
+
+.point-detail-item .value {
+    color: #dcdcdc;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.point-detail-item .value.warning {
+    color: #f48771;
+}
+
 /* Clickable header for transport events */
 .clickable-header {
     cursor: pointer;
@@ -1437,7 +1560,160 @@ document.addEventListener('keydown', function(e) {
         closeJsonModal();
     }
 });
-</script>";
+
+// ===== System Metrics Chart =====
+let metricsChart = null;
+
+function initMetricsChart() {
+    if (typeof systemMetricsData === 'undefined' || !document.getElementById('metricsChart')) return;
+    
+    const ctx = document.getElementById('metricsChart').getContext('2d');
+    
+    metricsChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: systemMetricsData.labels,
+            datasets: [{
+                label: 'CPU (%)',
+                data: systemMetricsData.cpu,
+                borderColor: '#4fc3f7',
+                backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                borderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 8,
+                pointBackgroundColor: '#4fc3f7',
+                tension: 0.3,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#dcdcdc' }
+                },
+                tooltip: {
+                    backgroundColor: '#2d2d30',
+                    titleColor: '#4fc3f7',
+                    bodyColor: '#dcdcdc',
+                    borderColor: '#4fc3f7',
+                    borderWidth: 1
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { color: '#9cdcfe' },
+                    grid: { color: '#3e3e3e' },
+                    title: { display: true, text: 'Time', color: '#dcdcdc' }
+                },
+                y: {
+                    ticks: { color: '#9cdcfe' },
+                    grid: { color: '#3e3e3e' },
+                    title: { display: true, text: 'Value', color: '#dcdcdc' }
+                }
+            },
+            onClick: (event, elements) => {
+                if (elements.length > 0) {
+                    const index = elements[0].index;
+                    showPointDetails(index);
+                }
+            }
+        }
+    });
+}
+
+function updateChart() {
+    if (!metricsChart) return;
+    
+    const metric = document.getElementById('metricSelect').value;
+    let data, label, color;
+    
+    switch(metric) {
+        case 'cpu':
+            data = systemMetricsData.cpu;
+            label = 'CPU (%)';
+            color = '#4fc3f7';
+            break;
+        case 'memory':
+            data = systemMetricsData.memory;
+            label = 'Memory (MB)';
+            color = '#81c784';
+            break;
+        case 'threadWait':
+            data = systemMetricsData.threadWait;
+            label = 'Thread Wait Interval (ms)';
+            color = '#ffb74d';
+            break;
+        case 'tcpConnections':
+            data = systemMetricsData.tcpConnections;
+            label = 'Open TCP Connections';
+            color = '#ba68c8';
+            break;
+    }
+    
+    metricsChart.data.datasets[0].data = data;
+    metricsChart.data.datasets[0].label = label;
+    metricsChart.data.datasets[0].borderColor = color;
+    metricsChart.data.datasets[0].pointBackgroundColor = color;
+    metricsChart.data.datasets[0].backgroundColor = color.replace(')', ', 0.1)').replace('rgb', 'rgba');
+    metricsChart.update();
+}
+
+function showPointDetails(index) {
+    const details = systemMetricsData.details[index];
+    const detailsDiv = document.getElementById('pointDetails');
+    const contentDiv = document.getElementById('pointDetailsContent');
+    
+    const memoryMB = (details.memory / 1024 / 1024).toFixed(2);
+    const threadStarvingClass = details.isThreadStarving ? 'warning' : '';
+    
+    contentDiv.innerHTML = `
+        <div class='point-details-grid'>
+            <div class='point-detail-item'>
+                <div class='label'>Time</div>
+                <div class='value'>${details.dateUtc}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>CPU</div>
+                <div class='value'>${details.cpu.toFixed(2)}%</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Memory</div>
+                <div class='value'>${memoryMB} MB</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Thread Wait Interval</div>
+                <div class='value'>${details.threadWait.toFixed(2)} ms</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Open TCP Connections</div>
+                <div class='value'>${details.tcpConnections.toLocaleString()}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Thread Starving</div>
+                <div class='value ${threadStarvingClass}'>${details.isThreadStarving ? 'Yes ⚠️' : 'No'}</div>
+            </div>
+            <div class='point-detail-item'>
+                <div class='label'>Available Threads</div>
+                <div class='value'>${details.availableThreads.toLocaleString()}</div>
+            </div>
+        </div>
+    `;
+    
+    detailsDiv.style.display = 'block';
+}
+
+// Initialize chart when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    initMetricsChart();
+});
+</script>
+<script src='https://cdn.jsdelivr.net/npm/chart.js'></script>";
     }
 }
 
