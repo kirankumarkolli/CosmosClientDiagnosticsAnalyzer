@@ -298,59 +298,211 @@ const app = {
     initializeCharts() {
         this.destroyCharts();
         
-        console.log('Initializing charts, Chart.js available:', !!window.Chart);
+        console.log('Initializing charts, ECharts available:', !!window.echarts);
         
         // System Metrics Chart
-        const systemCanvas = document.getElementById('systemMetricsChart');
-        console.log('systemMetricsChart canvas found:', !!systemCanvas);
+        this.initSystemMetricsChart();
         
-        if (systemCanvas && window.Chart) {
-            const dataEl = document.getElementById('systemMetricsChart-data');
-            console.log('systemMetricsChart-data found:', !!dataEl);
-            if (dataEl) {
-                try {
-                    const chartData = JSON.parse(dataEl.textContent);
-                    console.log('Chart data parsed, labels count:', chartData.labels?.length);
-                    const chart = new Chart(systemCanvas.getContext('2d'), {
-                        type: 'line',
-                        data: chartData,
-                        options: this.getChartOptions('System Metrics', [
-                            { id: 'y', title: 'CPU (%)', position: 'left' },
-                            { id: 'y1', title: 'Memory (MB)', position: 'right' },
-                            { id: 'y2', title: 'Thread Wait (ms)', position: 'right', display: false },
-                            { id: 'y3', title: 'TCP Connections', position: 'right', display: false }
-                        ])
-                    });
-                    this.chartInstances.push(chart);
-                    console.log('System metrics chart created successfully');
-                } catch (e) {
-                    console.error('Error creating system metrics chart:', e);
-                }
-            }
-        } else if (!window.Chart) {
-            console.warn('Chart.js not loaded - charts will not be displayed');
+        // Client Config Chart
+        this.initClientConfigChart();
+    },
+
+    /**
+     * Initialize System Metrics EChart
+     */
+    initSystemMetricsChart() {
+        const container = document.getElementById('systemMetricsChart');
+        const dataEl = document.getElementById('systemMetricsChart-data');
+        
+        if (!container || !dataEl || !window.echarts) {
+            console.log('System metrics chart skipped - missing elements or ECharts');
+            return;
         }
 
-        // Client Config Chart
-        const configCanvas = document.getElementById('clientConfigChart');
-        if (configCanvas && window.Chart) {
-            const dataEl = document.getElementById('clientConfigChart-data');
-            if (dataEl) {
-                try {
-                    const chartData = JSON.parse(dataEl.textContent);
-                    const chart = new Chart(configCanvas.getContext('2d'), {
-                        type: 'line',
-                        data: chartData,
-                        options: this.getChartOptions('Client Configuration', [
-                            { id: 'y', title: 'Processor Count', position: 'left' },
-                            { id: 'y1', title: 'Client Count', position: 'right' }
-                        ])
-                    });
-                    this.chartInstances.push(chart);
-                } catch (e) {
-                    console.error('Error creating client config chart:', e);
-                }
-            }
+        try {
+            const data = JSON.parse(dataEl.textContent);
+            const chart = echarts.init(container, 'dark');
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross', animation: true },
+                    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                    borderColor: '#444',
+                    textStyle: { color: '#d4d4d4' }
+                },
+                legend: {
+                    data: ['CPU (%)', 'Memory (MB)', 'Thread Wait (ms)', 'TCP Connections'],
+                    textStyle: { color: '#d4d4d4' },
+                    top: 10
+                },
+                toolbox: {
+                    feature: {
+                        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Zoom', back: 'Reset' } },
+                        restore: { title: 'Restore' },
+                        saveAsImage: { title: 'Save', pixelRatio: 2 }
+                    },
+                    right: 20
+                },
+                dataZoom: [
+                    { type: 'inside', start: 0, end: 100 },
+                    { type: 'slider', start: 0, end: 100, height: 25, bottom: 10 }
+                ],
+                grid: { left: 60, right: 60, top: 80, bottom: 80 },
+                xAxis: {
+                    type: 'category',
+                    data: data.timestamps,
+                    axisLabel: { color: '#808080', rotate: 30, fontSize: 10 },
+                    axisLine: { lineStyle: { color: '#444' } }
+                },
+                yAxis: [
+                    { 
+                        type: 'value', name: 'CPU / Thread Wait', position: 'left',
+                        axisLabel: { color: '#808080' }, nameTextStyle: { color: '#808080' },
+                        splitLine: { lineStyle: { color: '#333' } }
+                    },
+                    { 
+                        type: 'value', name: 'Memory (MB) / TCP', position: 'right',
+                        axisLabel: { color: '#808080' }, nameTextStyle: { color: '#808080' },
+                        splitLine: { show: false }
+                    }
+                ],
+                series: [
+                    {
+                        name: 'CPU (%)', type: 'line', data: data.cpu, yAxisIndex: 0,
+                        smooth: true, symbol: 'none',
+                        lineStyle: { width: 2, color: '#4fc3f7' },
+                        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(79, 195, 247, 0.3)' },
+                            { offset: 1, color: 'rgba(79, 195, 247, 0.05)' }
+                        ])}
+                    },
+                    {
+                        name: 'Memory (MB)', type: 'line', data: data.memory, yAxisIndex: 1,
+                        smooth: true, symbol: 'none',
+                        lineStyle: { width: 2, color: '#81c784' },
+                        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(129, 199, 132, 0.3)' },
+                            { offset: 1, color: 'rgba(129, 199, 132, 0.05)' }
+                        ])}
+                    },
+                    {
+                        name: 'Thread Wait (ms)', type: 'line', data: data.threadWait, yAxisIndex: 0,
+                        smooth: true, symbol: 'none',
+                        lineStyle: { width: 2, color: '#ffb74d' },
+                        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(255, 183, 77, 0.3)' },
+                            { offset: 1, color: 'rgba(255, 183, 77, 0.05)' }
+                        ])}
+                    },
+                    {
+                        name: 'TCP Connections', type: 'line', data: data.tcpConnections, yAxisIndex: 1,
+                        smooth: true, symbol: 'none',
+                        lineStyle: { width: 2, color: '#ba68c8' },
+                        areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(186, 104, 200, 0.3)' },
+                            { offset: 1, color: 'rgba(186, 104, 200, 0.05)' }
+                        ])}
+                    }
+                ],
+                animation: true,
+                animationDuration: 1000,
+                animationEasing: 'cubicOut'
+            };
+            
+            chart.setOption(option);
+            this.chartInstances.push(chart);
+            
+            // Handle resize
+            window.addEventListener('resize', () => chart.resize());
+            console.log('System metrics chart created successfully');
+        } catch (e) {
+            console.error('Error creating system metrics chart:', e);
+        }
+    },
+
+    /**
+     * Initialize Client Config EChart
+     */
+    initClientConfigChart() {
+        const container = document.getElementById('clientConfigChart');
+        const dataEl = document.getElementById('clientConfigChart-data');
+        
+        if (!container || !dataEl || !window.echarts) return;
+
+        try {
+            const data = JSON.parse(dataEl.textContent);
+            const chart = echarts.init(container, 'dark');
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'cross' },
+                    backgroundColor: 'rgba(30, 30, 30, 0.95)',
+                    borderColor: '#444',
+                    textStyle: { color: '#d4d4d4' }
+                },
+                legend: {
+                    data: ['Processor Count', 'Clients Created', 'Active Clients'],
+                    textStyle: { color: '#d4d4d4' },
+                    top: 10
+                },
+                toolbox: {
+                    feature: {
+                        dataZoom: { yAxisIndex: 'none' },
+                        restore: {},
+                        saveAsImage: { pixelRatio: 2 }
+                    },
+                    right: 20
+                },
+                dataZoom: [
+                    { type: 'inside', start: 0, end: 100 },
+                    { type: 'slider', start: 0, end: 100, height: 25, bottom: 10 }
+                ],
+                grid: { left: 60, right: 60, top: 80, bottom: 80 },
+                xAxis: {
+                    type: 'category',
+                    data: data.timestamps,
+                    axisLabel: { color: '#808080', rotate: 30, fontSize: 10 },
+                    axisLine: { lineStyle: { color: '#444' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#808080' },
+                    splitLine: { lineStyle: { color: '#333' } }
+                },
+                series: [
+                    {
+                        name: 'Processor Count', type: 'line', data: data.processorCount,
+                        smooth: true, symbol: 'circle', symbolSize: 6,
+                        lineStyle: { width: 2, color: '#26c6da' },
+                        itemStyle: { color: '#26c6da' }
+                    },
+                    {
+                        name: 'Clients Created', type: 'line', data: data.clientsCreated,
+                        smooth: true, symbol: 'circle', symbolSize: 6,
+                        lineStyle: { width: 2, color: '#66bb6a' },
+                        itemStyle: { color: '#66bb6a' }
+                    },
+                    {
+                        name: 'Active Clients', type: 'line', data: data.activeClients,
+                        smooth: true, symbol: 'circle', symbolSize: 6,
+                        lineStyle: { width: 2, color: '#ffa726' },
+                        itemStyle: { color: '#ffa726' }
+                    }
+                ],
+                animation: true,
+                animationDuration: 800
+            };
+            
+            chart.setOption(option);
+            this.chartInstances.push(chart);
+            window.addEventListener('resize', () => chart.resize());
+            console.log('Client config chart created successfully');
+        } catch (e) {
+            console.error('Error creating client config chart:', e);
         }
     },
 
@@ -358,46 +510,8 @@ const app = {
      * Get chart options with multiple Y axes
      */
     getChartOptions(title, yAxes) {
-        const scales = {
-            x: {
-                type: 'category',
-                display: true,
-                title: { display: true, text: 'Time', color: '#d4d4d4' },
-                ticks: { color: '#d4d4d4', maxRotation: 45, maxTicksLimit: 20 },
-                grid: { color: 'rgba(255,255,255,0.1)' }
-            }
-        };
-
-        yAxes.forEach((axis, i) => {
-            scales[axis.id] = {
-                type: 'linear',
-                display: axis.display !== false,
-                position: axis.position,
-                title: { display: true, text: axis.title, color: '#d4d4d4' },
-                ticks: { color: '#d4d4d4' },
-                grid: { color: i === 0 ? 'rgba(255,255,255,0.1)' : 'transparent' }
-            };
-        });
-
-        return {
-            responsive: true,
-            maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
-            plugins: {
-                legend: {
-                    labels: { color: '#d4d4d4' },
-                    onClick: (e, legendItem, legend) => {
-                        const index = legendItem.datasetIndex;
-                        const chart = legend.chart;
-                        const meta = chart.getDatasetMeta(index);
-                        meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
-                        chart.update();
-                    }
-                },
-                title: { display: false }
-            },
-            scales: scales
-        };
+        // Deprecated - kept for compatibility
+        return {};
     },
 
     /**
@@ -619,7 +733,7 @@ const app = {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cosmos Diagnostics Report</title>
-    <script src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"><\/script>
     <style>${this.getEmbeddedStyles()}</style>
 </head>
 <body>
@@ -709,27 +823,58 @@ function formatJson(){try{const f=JSON.stringify(JSON.parse(currentJson),null,2)
 document.addEventListener('click',e=>{const th=e.target.closest('th.sortable');if(th){const t=th.closest('table'),c=parseInt(th.dataset.col);if(t&&!isNaN(c)){const tb=t.querySelector('tbody');if(!tb)return;const r=Array.from(tb.querySelectorAll('tr')),a=th.classList.contains('asc');t.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('asc','desc'));th.classList.add(a?'desc':'asc');const d=a?-1:1;r.sort((x,y)=>{const ca=x.cells[c],cb=y.cells[c];if(!ca||!cb)return 0;let va=ca.dataset.sort||ca.textContent.trim(),vb=cb.dataset.sort||cb.textContent.trim();const na=parseFloat(va),nb=parseFloat(vb);return!isNaN(na)&&!isNaN(nb)?(na-nb)*d:va.localeCompare(vb)*d});r.forEach((row,i)=>{if(row.cells[0])row.cells[0].textContent=i+1;tb.appendChild(row)})}}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
 
-// Initialize charts on load
+// Initialize ECharts on load
 function initCharts(){
-    const chartOpts=(yAxes)=>({
-        responsive:true,maintainAspectRatio:false,
-        interaction:{mode:'index',intersect:false},
-        plugins:{legend:{labels:{color:'#d4d4d4'}}},
-        scales:Object.assign({x:{type:'category',display:true,ticks:{color:'#d4d4d4',maxRotation:45,maxTicksLimit:20},grid:{color:'rgba(255,255,255,0.1)'}}},
-            yAxes.reduce((a,y,i)=>(a[y.id]={type:'linear',display:y.display!==false,position:y.position,title:{display:true,text:y.title,color:'#d4d4d4'},ticks:{color:'#d4d4d4'},grid:{color:i===0?'rgba(255,255,255,0.1)':'transparent'}},a),{}))
-    });
-    ['systemMetricsChart','clientConfigChart'].forEach(id=>{
-        const c=document.getElementById(id),d=document.getElementById(id+'-data');
-        if(c&&d&&window.Chart){
-            try{
-                const data=JSON.parse(d.textContent);
-                const yAxes=id==='systemMetricsChart'?
-                    [{id:'y',title:'CPU (%)',position:'left'},{id:'y1',title:'Memory (MB)',position:'right'},{id:'y2',title:'Thread Wait (ms)',position:'right',display:false},{id:'y3',title:'TCP Connections',position:'right',display:false}]:
-                    [{id:'y',title:'Processor Count',position:'left'},{id:'y1',title:'Client Count',position:'right'}];
-                new Chart(c.getContext('2d'),{type:'line',data:data,options:chartOpts(yAxes)});
-            }catch(e){console.error('Chart error:',e)}
-        }
-    });
+    if(!window.echarts)return;
+    
+    // System Metrics Chart
+    const sysEl=document.getElementById('systemMetricsChart'),sysData=document.getElementById('systemMetricsChart-data');
+    if(sysEl&&sysData){
+        try{
+            const d=JSON.parse(sysData.textContent),chart=echarts.init(sysEl,'dark');
+            chart.setOption({
+                backgroundColor:'transparent',
+                tooltip:{trigger:'axis',axisPointer:{type:'cross'},backgroundColor:'rgba(30,30,30,0.95)',borderColor:'#444',textStyle:{color:'#d4d4d4'}},
+                legend:{data:['CPU (%)','Memory (MB)','Thread Wait (ms)','TCP Connections'],textStyle:{color:'#d4d4d4'},top:10},
+                toolbox:{feature:{dataZoom:{yAxisIndex:'none'},restore:{},saveAsImage:{pixelRatio:2}},right:20},
+                dataZoom:[{type:'inside',start:0,end:100},{type:'slider',start:0,end:100,height:25,bottom:10}],
+                grid:{left:60,right:60,top:80,bottom:80},
+                xAxis:{type:'category',data:d.timestamps,axisLabel:{color:'#808080',rotate:30,fontSize:10},axisLine:{lineStyle:{color:'#444'}}},
+                yAxis:[{type:'value',name:'CPU / Thread Wait',position:'left',axisLabel:{color:'#808080'},nameTextStyle:{color:'#808080'},splitLine:{lineStyle:{color:'#333'}}},{type:'value',name:'Memory (MB) / TCP',position:'right',axisLabel:{color:'#808080'},nameTextStyle:{color:'#808080'},splitLine:{show:false}}],
+                series:[
+                    {name:'CPU (%)',type:'line',data:d.cpu,yAxisIndex:0,smooth:true,symbol:'none',lineStyle:{width:2,color:'#4fc3f7'},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(79,195,247,0.3)'},{offset:1,color:'rgba(79,195,247,0.05)'}]}}},
+                    {name:'Memory (MB)',type:'line',data:d.memory,yAxisIndex:1,smooth:true,symbol:'none',lineStyle:{width:2,color:'#81c784'},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(129,199,132,0.3)'},{offset:1,color:'rgba(129,199,132,0.05)'}]}}},
+                    {name:'Thread Wait (ms)',type:'line',data:d.threadWait,yAxisIndex:0,smooth:true,symbol:'none',lineStyle:{width:2,color:'#ffb74d'},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(255,183,77,0.3)'},{offset:1,color:'rgba(255,183,77,0.05)'}]}}},
+                    {name:'TCP Connections',type:'line',data:d.tcpConnections,yAxisIndex:1,smooth:true,symbol:'none',lineStyle:{width:2,color:'#ba68c8'},areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(186,104,200,0.3)'},{offset:1,color:'rgba(186,104,200,0.05)'}]}}}
+                ],animation:true,animationDuration:1000
+            });
+            window.addEventListener('resize',()=>chart.resize());
+        }catch(e){console.error('System chart error:',e)}
+    }
+    
+    // Client Config Chart
+    const cfgEl=document.getElementById('clientConfigChart'),cfgData=document.getElementById('clientConfigChart-data');
+    if(cfgEl&&cfgData){
+        try{
+            const d=JSON.parse(cfgData.textContent),chart=echarts.init(cfgEl,'dark');
+            chart.setOption({
+                backgroundColor:'transparent',
+                tooltip:{trigger:'axis',axisPointer:{type:'cross'},backgroundColor:'rgba(30,30,30,0.95)',borderColor:'#444',textStyle:{color:'#d4d4d4'}},
+                legend:{data:['Processor Count','Clients Created','Active Clients'],textStyle:{color:'#d4d4d4'},top:10},
+                toolbox:{feature:{dataZoom:{yAxisIndex:'none'},restore:{},saveAsImage:{pixelRatio:2}},right:20},
+                dataZoom:[{type:'inside',start:0,end:100},{type:'slider',start:0,end:100,height:25,bottom:10}],
+                grid:{left:60,right:60,top:80,bottom:80},
+                xAxis:{type:'category',data:d.timestamps,axisLabel:{color:'#808080',rotate:30,fontSize:10},axisLine:{lineStyle:{color:'#444'}}},
+                yAxis:{type:'value',axisLabel:{color:'#808080'},splitLine:{lineStyle:{color:'#333'}}},
+                series:[
+                    {name:'Processor Count',type:'line',data:d.processorCount,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#26c6da'},itemStyle:{color:'#26c6da'}},
+                    {name:'Clients Created',type:'line',data:d.clientsCreated,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#66bb6a'},itemStyle:{color:'#66bb6a'}},
+                    {name:'Active Clients',type:'line',data:d.activeClients,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#ffa726'},itemStyle:{color:'#ffa726'}}
+                ],animation:true,animationDuration:800
+            });
+            window.addEventListener('resize',()=>chart.resize());
+        }catch(e){console.error('Config chart error:',e)}
+    }
 }
 if(document.readyState==='complete')initCharts();else window.addEventListener('load',initCharts);
 `;

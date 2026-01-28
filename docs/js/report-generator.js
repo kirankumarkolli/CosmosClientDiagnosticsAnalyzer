@@ -688,51 +688,18 @@ class ReportGenerator {
     generateSystemMetricsSection(metrics) {
         const chartId = 'systemMetricsChart';
         const chartData = JSON.stringify({
-            labels: metrics.snapshots.map(s => s.timestamp),
-            datasets: [
-                {
-                    label: 'CPU (%)',
-                    data: metrics.snapshots.map(s => s.cpu),
-                    borderColor: '#4fc3f7',
-                    backgroundColor: 'rgba(79, 195, 247, 0.1)',
-                    yAxisID: 'y',
-                    tension: 0.1
-                },
-                {
-                    label: 'Memory (MB)',
-                    data: metrics.snapshots.map(s => s.memoryMB),
-                    borderColor: '#81c784',
-                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
-                    yAxisID: 'y1',
-                    tension: 0.1
-                },
-                {
-                    label: 'Thread Wait (ms)',
-                    data: metrics.snapshots.map(s => s.threadWaitMs),
-                    borderColor: '#ffb74d',
-                    backgroundColor: 'rgba(255, 183, 77, 0.1)',
-                    yAxisID: 'y2',
-                    tension: 0.1
-                },
-                {
-                    label: 'TCP Connections',
-                    data: metrics.snapshots.map(s => s.tcpConnections),
-                    borderColor: '#ba68c8',
-                    backgroundColor: 'rgba(186, 104, 200, 0.1)',
-                    yAxisID: 'y3',
-                    tension: 0.1
-                }
-            ]
+            timestamps: metrics.snapshots.map(s => s.timestamp),
+            cpu: metrics.snapshots.map(s => s.cpu),
+            memory: metrics.snapshots.map(s => s.memoryMB),
+            threadWait: metrics.snapshots.map(s => s.threadWaitMs),
+            tcpConnections: metrics.snapshots.map(s => s.tcpConnections)
         });
 
         let html = `
             <div class="section">
                 <h2>📈 System Metrics Time Plot</h2>
-                <p class="note">Showing ${metrics.snapshots.length} of ${metrics.totalSnapshots} snapshots. Click legend to toggle series.</p>
-                <div class="chart-container" style="height: 400px; position: relative; background: var(--bg-secondary); border-radius: 6px;">
-                    <canvas id="${chartId}"></canvas>
-                    <noscript>JavaScript required for charts</noscript>
-                </div>
+                <p class="note">Showing ${metrics.snapshots.length} of ${metrics.totalSnapshots} snapshots. Use toolbox to zoom, pan, or save as image.</p>
+                <div id="${chartId}" class="echarts-container" style="height: 450px; background: var(--bg-secondary); border-radius: 8px;"></div>
                 <script type="application/json" id="${chartId}-data">${chartData}</script>
                 ${this.generateMetricsStatsTable(metrics.stats, 'System Metrics Statistics')}
             </div>
@@ -747,33 +714,10 @@ class ReportGenerator {
     generateClientConfigSection(config) {
         const chartId = 'clientConfigChart';
         const chartData = JSON.stringify({
-            labels: config.snapshots.map(s => s.timestamp),
-            datasets: [
-                {
-                    label: 'Processor Count',
-                    data: config.snapshots.map(s => s.processorCount),
-                    borderColor: '#26c6da',
-                    backgroundColor: 'rgba(38, 198, 218, 0.1)',
-                    yAxisID: 'y',
-                    tension: 0.1
-                },
-                {
-                    label: 'Clients Created',
-                    data: config.snapshots.map(s => s.clientsCreated),
-                    borderColor: '#66bb6a',
-                    backgroundColor: 'rgba(102, 187, 106, 0.1)',
-                    yAxisID: 'y1',
-                    tension: 0.1
-                },
-                {
-                    label: 'Active Clients',
-                    data: config.snapshots.map(s => s.activeClients),
-                    borderColor: '#ffa726',
-                    backgroundColor: 'rgba(255, 167, 38, 0.1)',
-                    yAxisID: 'y1',
-                    tension: 0.1
-                }
-            ]
+            timestamps: config.snapshots.map(s => s.timestamp),
+            processorCount: config.snapshots.map(s => s.processorCount),
+            clientsCreated: config.snapshots.map(s => s.clientsCreated),
+            activeClients: config.snapshots.map(s => s.activeClients)
         });
 
         let html = `
@@ -783,9 +727,7 @@ class ReportGenerator {
                     ${config.uniqueMachines.length > 0 ? `Machines: ${config.uniqueMachines.join(', ')}` : ''}
                     ${config.connectionModes.length > 0 ? ` | Modes: ${config.connectionModes.join(', ')}` : ''}
                 </p>
-                <div class="chart-container" style="height: 400px; position: relative;">
-                    <canvas id="${chartId}"></canvas>
-                </div>
+                <div id="${chartId}" class="echarts-container" style="height: 400px; background: var(--bg-secondary); border-radius: 8px;"></div>
                 <script type="application/json" id="${chartId}-data">${chartData}</script>
                 ${this.generateConfigStatsTable(config.stats, 'Client Configuration Statistics')}
             </div>
