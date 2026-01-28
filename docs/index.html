@@ -10,7 +10,7 @@
     <div class="container">
         <header>
             <h1>🔍 Cosmos Diagnostics Analyzer</h1>
-            <p class="subtitle">Analyze Azure Cosmos DB diagnostics logs - 100% client-side, no data leaves your browser</p>
+            <p class="subtitle">Analyze Azure Cosmos DB diagnostics logs - 100% client-side, your data never leaves your browser</p>
         </header>
 
         <!-- Upload Section -->
@@ -20,13 +20,13 @@
                 <h2>Drop your diagnostics file here</h2>
                 <p>or click to browse</p>
                 <input type="file" id="fileInput" accept=".txt,.json,.log" hidden>
-                <div class="file-name" id="fileName"></div>
+                <div class="file-info" id="fileInfo"></div>
             </div>
             
             <div class="options">
                 <label>
                     <span>Latency Threshold (ms):</span>
-                    <input type="number" id="latencyThreshold" value="600" min="0">
+                    <input type="number" id="latencyThreshold" value="600" min="0" step="100">
                 </label>
             </div>
             
@@ -76,8 +76,24 @@
         </footer>
     </div>
 
-    <script src="js/diagnostics-parser.js"></script>
-    <script src="js/html-generator.js"></script>
+    <!-- JSON Modal -->
+    <div id="jsonModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>📄 JSON Content</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-small" id="copyJsonBtn">📋 Copy</button>
+                <button class="btn btn-small" id="formatJsonBtn">🔧 Format</button>
+            </div>
+            <pre id="jsonContent" class="json-display"></pre>
+        </div>
+    </div>
+
+    <script src="js/json-parser.js"></script>
+    <script src="js/analyzer.js"></script>
+    <script src="js/report-generator.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
