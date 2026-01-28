@@ -2,7 +2,7 @@
  * Version info - updated automatically before each commit
  */
 const VERSION = {
-    commit: '5f6f9df',
+    commit: '252b15e',
     date: '2026-01-27'
 };
 

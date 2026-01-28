@@ -95,6 +95,33 @@
 | Grouping | By ResourceType→OperationType, StatusCode→SubStatusCode |
 | Transport events | Group by last event + bottleneck phase |
 | Endpoint analysis | Count unique physical addresses per phase |
+| Percentile calculation | P50, P75, P90, P95, P99 for latency distributions |
+
+**Percentile Requirements:**
+
+| Percentile | Description | Use Case |
+|------------|-------------|----------|
+| P50 (Median) | 50% of requests complete within this time | Typical user experience |
+| P75 | 75% of requests complete within this time | Above-average latency |
+| P90 | 90% of requests complete within this time | High latency tail |
+| P95 | 95% of requests complete within this time | Performance SLA threshold |
+| P99 | 99% of requests complete within this time | Worst-case latency |
+
+**Percentile Calculation Formula:**
+```
+index = ceil((percentile / 100) * count) - 1
+value = sortedArray[max(0, min(index, count - 1))]
+```
+
+**Where Percentiles are Displayed:**
+
+| Section | Percentiles Shown |
+|---------|------------------|
+| Operation Buckets | P50, P90, P99 (columns) |
+| GroupBy ResourceType→OperationType | P50, P90 (columns) |
+| GroupBy StatusCode→SubStatusCode | P50, P90 (columns) |
+| Transport Event Groups | P50, P90 (header) |
+| Phase Breakdown | P50, P90, P99 (columns) |
 
 **Computed Metrics:**
 - Per bucket: min/max duration, min/max network call count, total count, percentile P50, P75, P90, P95, P99 durations
