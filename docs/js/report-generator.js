@@ -169,25 +169,63 @@ class ReportGenerator {
 
         html += '</tbody></table></div>';
 
-        // Generate detail sections for each bucket
+        // Generate detail sections for each bucket with percentile breakdown
         for (const bucket of result.operationBuckets) {
             const bucketId = this.safeId(bucket.name);
-            const entries = result.allHighLatencyDiagnostics
+            const allEntries = result.allHighLatencyDiagnostics
                 .filter(e => e.name === bucket.name)
-                .slice(0, 100);
+                .sort((a, b) => a.duration - b.duration);
+
+            // Group entries by percentile ranges per SPEC:
+            // P50: ≤ P50, P75: (P50, P75], P90: (P75, P90], P95: (P90, P95], P99: (P90, P99]
+            const p50Entries = allEntries.filter(e => e.duration <= bucket.p50);
+            const p75Entries = allEntries.filter(e => e.duration > bucket.p50 && e.duration <= bucket.p75);
+            const p90Entries = allEntries.filter(e => e.duration > bucket.p75 && e.duration <= bucket.p90);
+            const p95Entries = allEntries.filter(e => e.duration > bucket.p90 && e.duration <= bucket.p95);
+            const p99Entries = allEntries.filter(e => e.duration > bucket.p95 && e.duration <= bucket.p99);
+            const above99Entries = allEntries.filter(e => e.duration > bucket.p99);
 
             html += `
                 <div id="bucket-${bucketId}" class="detail-section">
                     <button class="btn-close" onclick="app.closeBucket('${bucketId}')">&times;</button>
                     <h3>📋 ${this.escape(bucket.name)}</h3>
-                    <p class="note">Showing ${entries.length} of ${bucket.count} entries</p>
-                    ${this.generateEntriesTable(entries, `bucket-entries-${bucketId}`)}
+                    <p class="note">Total: ${bucket.count} entries grouped by percentile ranges</p>
+                    
+                    <div class="percentile-groups">
+                        ${this.generatePercentileGroup('≤ P50', `≤ ${bucket.p50.toFixed(2)}ms`, p50Entries, `${bucketId}-p50`)}
+                        ${this.generatePercentileGroup('P50 - P75', `${bucket.p50.toFixed(2)} - ${bucket.p75.toFixed(2)}ms`, p75Entries, `${bucketId}-p75`)}
+                        ${this.generatePercentileGroup('P75 - P90', `${bucket.p75.toFixed(2)} - ${bucket.p90.toFixed(2)}ms`, p90Entries, `${bucketId}-p90`)}
+                        ${this.generatePercentileGroup('P90 - P95', `${bucket.p90.toFixed(2)} - ${bucket.p95.toFixed(2)}ms`, p95Entries, `${bucketId}-p95`)}
+                        ${this.generatePercentileGroup('P95 - P99', `${bucket.p95.toFixed(2)} - ${bucket.p99.toFixed(2)}ms`, p99Entries, `${bucketId}-p99`)}
+                        ${this.generatePercentileGroup('> P99', `> ${bucket.p99.toFixed(2)}ms`, above99Entries, `${bucketId}-above99`)}
+                    </div>
                 </div>
             `;
         }
 
         html += '</div>';
         return html;
+    }
+
+    /**
+     * Generate a collapsible percentile group
+     */
+    generatePercentileGroup(label, range, entries, groupId) {
+        if (entries.length === 0) return '';
+        
+        const displayEntries = entries.slice(0, 50);
+        return `
+            <div class="subsection">
+                <div class="collapsible-header" onclick="app.toggleSection('${groupId}')">
+                    <h4>${label} (${entries.length} entries) - Range: ${range}</h4>
+                    <span class="collapse-icon" id="${groupId}-icon">▶</span>
+                </div>
+                <div id="${groupId}" class="collapsible-content">
+                    ${this.generateEntriesTable(displayEntries, `table-${groupId}`)}
+                    ${entries.length > 50 ? `<p class="note">Showing 50 of ${entries.length} entries</p>` : ''}
+                </div>
+            </div>
+        `;
     }
 
     /**

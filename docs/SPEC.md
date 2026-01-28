@@ -9,6 +9,7 @@
 - **2026-01-28**: Modal close now scrolls back to originating table row with highlight flash
 - **2026-01-28**: Added version display (commit hash + date) in footer and exported reports
 - **2026-01-28**: Fixed JSON view - store raw JSON without HTML encoding so View/Format works correctly
+- **2026-01-28**: Operation bucket drill-down now groups entries by percentile ranges (≤P50, P50-P75, P75-P90, P90-P95, P95-P99, >P99)
 
 ---
 
