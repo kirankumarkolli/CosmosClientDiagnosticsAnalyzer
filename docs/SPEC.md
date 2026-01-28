@@ -5,6 +5,7 @@
 ### Bug Fixes
 - **2026-01-28**: Fixed button showing "Analyzing..." on page load - CSS `[hidden]` attribute override
 - **2026-01-28**: Added repaired/failed JSON counts to Parsing Statistics summary
+- **2026-01-28**: JSON column now shows repair status (✓ Valid or 🔧 Repaired) for each entry
 
 ---
 
@@ -112,7 +113,7 @@
 - Sortable columns (click header to toggle asc/desc)
 - Row numbers
 - Clickable rows to show detail sections
-- JSON viewer for raw data
+- JSON viewer for raw data with repair status indicator (✓ Valid or 🔧 Repaired)
 
 ### 5. UI/UX Design
 

@@ -209,6 +209,8 @@ class ReportGenerator {
         entries.forEach((entry, i) => {
             const jsonId = `json-${++this.jsonIdCounter}`;
             const jsonLen = entry.rawJson?.length || 0;
+            const repairStatus = entry.wasRepaired ? '🔧 Repaired' : '✓ Valid';
+            const repairClass = entry.wasRepaired ? 'warning' : 'success';
             html += `
                 <tr>
                     <td class="row-num">${i + 1}</td>
@@ -217,6 +219,7 @@ class ReportGenerator {
                     <td data-sort="${entry.directCalls}"><span class="num">${entry.directCalls}</span></td>
                     <td data-sort="${entry.gatewayCalls}"><span class="num">${entry.gatewayCalls}</span></td>
                     <td>
+                        <span class="${repairClass}" style="font-size:11px;margin-right:6px;">${repairStatus}</span>
                         <button class="btn-view" onclick="app.showJson('${jsonId}')">📄 View (${this.formatSize(jsonLen)})</button>
                         <script type="application/json" id="${jsonId}">${this.escape(entry.rawJson || '')}</script>
                     </td>

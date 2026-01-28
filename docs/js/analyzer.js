@@ -40,7 +40,8 @@ class Analyzer {
                 duration: d.duration || 0,
                 directCalls: this.countCalls(d.Summary?.DirectCalls),
                 gatewayCalls: this.countCalls(d.Summary?.GatewayCalls),
-                rawJson: d._rawJson
+                rawJson: d._rawJson,
+                wasRepaired: d._wasRepaired || false
             }))
             .sort((a, b) => b.duration - a.duration);
 

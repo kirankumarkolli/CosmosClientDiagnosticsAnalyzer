@@ -40,7 +40,7 @@ class JsonParser {
     /**
      * Parse a single line, attempting repair if needed
      * @param {string} line - JSON string
-     * @returns {Object|null} Parsed object or null
+     * @returns {Object|null} Parsed object or null (includes _wasRepaired flag)
      */
     parseLine(line) {
         if (!line || !line.trim()) return null;
@@ -48,7 +48,9 @@ class JsonParser {
 
         // Try direct parse first
         try {
-            return this.normalizeKeys(JSON.parse(line));
+            const parsed = this.normalizeKeys(JSON.parse(line));
+            parsed._wasRepaired = false;
+            return parsed;
         } catch (e) {
             // Need repair
         }
@@ -59,6 +61,7 @@ class JsonParser {
             repaired = this.repairJson(repaired);
             try {
                 const parsed = this.normalizeKeys(JSON.parse(repaired));
+                parsed._wasRepaired = true;
                 this.repairedCount++;
                 return parsed;
             } catch (e) {
