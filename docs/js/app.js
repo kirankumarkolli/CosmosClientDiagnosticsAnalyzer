@@ -382,12 +382,12 @@ const app = {
                 },
                 yAxis: [
                     { 
-                        type: 'value', name: 'CPU / Thread Wait', position: 'left',
+                        type: 'value', name: 'CPU (%) / TCP', position: 'left',
                         axisLabel: { color: '#808080' }, nameTextStyle: { color: '#808080' },
                         splitLine: { lineStyle: { color: '#333' } }
                     },
                     { 
-                        type: 'value', name: 'Memory (MB) / TCP', position: 'right',
+                        type: 'value', name: 'Memory (MB) / Thread Wait (ms)', position: 'right',
                         axisLabel: { color: '#808080' }, nameTextStyle: { color: '#808080' },
                         splitLine: { show: false }
                     }
@@ -412,7 +412,7 @@ const app = {
                         ])}
                     },
                     {
-                        name: 'Thread Wait (ms)', type: 'line', data: data.threadWait, yAxisIndex: 0,
+                        name: 'Thread Wait (ms)', type: 'line', data: data.threadWait, yAxisIndex: 1,
                         smooth: true, symbol: 'none',
                         lineStyle: { width: 2, color: '#ffb74d' },
                         areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -421,7 +421,7 @@ const app = {
                         ])}
                     },
                     {
-                        name: 'TCP Connections', type: 'line', data: data.tcpConnections, yAxisIndex: 1,
+                        name: 'TCP Connections', type: 'line', data: data.tcpConnections, yAxisIndex: 0,
                         smooth: true, symbol: 'none',
                         lineStyle: { width: 2, color: '#ba68c8' },
                         areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
@@ -436,6 +436,21 @@ const app = {
             };
             
             chart.setOption(option);
+            
+            // Handle legend selection to show/hide corresponding axes
+            chart.on('legendselectchanged', function(params) {
+                const selected = params.selected;
+                // yAxis 0: CPU, TCP | yAxis 1: Memory, Thread Wait
+                const leftAxisVisible = selected['CPU (%)'] || selected['TCP Connections'];
+                const rightAxisVisible = selected['Memory (MB)'] || selected['Thread Wait (ms)'];
+                
+                chart.setOption({
+                    yAxis: [
+                        { show: leftAxisVisible },
+                        { show: rightAxisVisible }
+                    ]
+                });
+            });
             
             // Auto-activate dataZoom tool on load
             chart.dispatchAction({
