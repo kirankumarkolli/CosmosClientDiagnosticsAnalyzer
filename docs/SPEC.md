@@ -134,11 +134,11 @@ value = sortedArray[max(0, min(index, count - 1))]
 | Section | Content |
 |---------|---------|
 | Summary | Total lines, successfully parsed, repaired (truncated JSON fixed), failed to parse, latency threshold, high-latency count, high-latency rate |
-| Operation Buckets | Table with clickable drill-down |
+| Operation Buckets | Table with clickable percentile drill-down |
 | High Latency Network | Top 100 interactions (collapsible) |
 | GroupBy ResourceType→OperationType | Grouped table with entries |
 | GroupBy StatusCode→SubStatusCode | Grouped table with entries |
-| GroupBy LastTransportEvent | With phase breakdown and endpoint stats |
+| GroupBy LastTransportEvent | With phase breakdown, percentile drill-down, and endpoint stats |
 
 **Table Features:**
 - Sortable columns (click header to toggle asc/desc)
@@ -146,6 +146,20 @@ value = sortedArray[max(0, min(index, count - 1))]
 - Clickable rows to show detail sections
 - JSON viewer for raw data with repair status indicator (✓ Valid or 🔧 Repaired)
 - Raw JSON stored unencoded for proper View/Format functionality
+
+**Percentile Drill-Down (Click-Through):**
+| Table | Drill-Down Behavior |
+|-------|---------------------|
+| Operation Buckets | Click any percentile value to expand grouped entries by percentile range |
+| Phase Breakdown | Click any percentile value to expand entries grouped by range (≤P50, P50-P75, etc.) |
+
+Percentile groups shown:
+- ≤P50: All entries up to and equal to P50 value
+- P50-P75: Entries between P50 and P75 (exclusive/inclusive)
+- P75-P90: Entries between P75 and P90
+- P90-P95: Entries between P90 and P95
+- P95-P99: Entries between P95 and P99
+- >P99: Entries above P99 value
 
 ### 5. UI/UX Design
 
