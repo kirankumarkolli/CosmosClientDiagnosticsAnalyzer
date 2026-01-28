@@ -99,13 +99,13 @@
 
 **Percentile Requirements:**
 
-| Percentile | Description | Use Case |
-|------------|-------------|----------|
-| P50 (Median) | 50% of requests complete within this time | Typical user experience |
-| P75 | 75% of requests complete within this time | Above-average latency |
-| P90 | 90% of requests complete within this time | High latency tail |
-| P95 | 95% of requests complete within this time | Performance SLA threshold |
-| P99 | 99% of requests complete within this time | Worst-case latency |
+| Percentile | Range | Description |
+|------------|-------|-------------|
+| P50 (Median) | ≤ P50 | All requests up to and equal to P50 value |
+| P75 | (P50, P75] | Requests between P50 and P75 (exclusive of P50, inclusive of P75) |
+| P90 | (P75, P90] | Requests between P75 and P90 (exclusive of P75, inclusive of P90) |
+| P95 | (P90, P95] | Requests between P90 and P95 (exclusive of P90, inclusive of P95) |
+| P99 | (P90, P99] | Requests between P90 and P99 (exclusive of P90, inclusive of P99) |
 
 **Percentile Calculation Formula:**
 ```

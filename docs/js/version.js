@@ -1,9 +1,5 @@
-/**
- * Version info - updated automatically before each commit
- */
 const VERSION = {
-    commit: '252b15e',
+    commit: '7c0dc63',
     date: '2026-01-27'
 };
-
 window.VERSION = VERSION;
