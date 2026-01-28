@@ -2,6 +2,9 @@
 
 ## ✅ STATUS: COMPLETED (2026-01-28)
 
+### Upcoming Features
+- **Timeline Visualization**: Chrome-style network waterfall (Gantt chart) in JSON Modal
+
 ### Bug Fixes
 - **2026-01-28**: Fixed button showing "Analyzing..." on page load - CSS `[hidden]` attribute override
 - **2026-01-28**: Added repaired/failed JSON counts to Parsing Statistics summary
@@ -215,6 +218,41 @@ Percentile groups shown:
 | Modal behavior | Closing JSON modal returns focus to originating row with highlight |
 | Version tracking | Git commit hash displayed in footer and embedded in exported reports |
 
+### 7. Timeline Visualization (JSON Modal)
+
+**Feature:** Chrome DevTools-style network waterfall (Gantt chart) for Transport Request Timeline events.
+
+**Trigger:** "📊 Show Timeline" button in JSON Modal (toggles between Timeline and JSON view)
+
+**Behavior:** When timeline is shown, JSON content is hidden. Button toggles between "📊 Show Timeline" and "📄 Show JSON".
+
+**Data Source:** `StoreResponseStatistics[].StoreResult.transportRequestTimeline.requestTimeline[]`
+
+| Phase | Color | Description |
+|-------|-------|-------------|
+| Created | #4CAF50 (green) | Request object created |
+| ChannelAcquisitionStarted | #2196F3 (blue) | Channel acquisition began |
+| Pipelined | #FF9800 (orange) | Request pipelined to channel |
+| Transit Time | #9C27B0 (purple) | Network round-trip time |
+| Received | #00BCD4 (cyan) | Response received |
+| Completed | #607D8B (gray) | Request completed |
+
+**UI Components:**
+| Component | Description |
+|-----------|-------------|
+| Legend | Color-coded phase labels |
+| Time Axis | Auto-scaled horizontal axis (0ms to max duration) |
+| Swimlanes | One row per StoreResult request |
+| Row Label | StatusCode + truncated endpoint |
+| Waterfall Bar | Stacked colored segments for each phase |
+| Tooltip | Hover to show all phase durations |
+| Zoom Controls | ➕ Zoom In, ➖ Zoom Out, ⟲ Reset |
+
+**Timing Calculation:**
+- Start Time: Inferred from first phase `startTimeUtc`
+- Bar Position: Relative to earliest request across all StoreResults
+- Phase Width: Proportional to `durationInMs`
+
 ---
 
 ## File Structure
@@ -229,6 +267,7 @@ docs/
     ├── json-parser.js      # JSON parsing and repair
     ├── analyzer.js         # Analysis engine
     ├── report-generator.js # HTML report generation
+    ├── timeline.js         # Timeline visualization for JSON modal
     └── app.js              # Main application logic
 ```
 

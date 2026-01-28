@@ -38,6 +38,7 @@ const app = {
             modalClose: document.getElementById('modalClose'),
             copyJsonBtn: document.getElementById('copyJsonBtn'),
             formatJsonBtn: document.getElementById('formatJsonBtn'),
+            timelineBtn: document.getElementById('timelineBtn'),
             versionInfo: document.getElementById('versionInfo')
         };
 
@@ -59,7 +60,7 @@ const app = {
      */
     setupEventListeners() {
         const { dropArea, fileInput, analyzeBtn, downloadBtn, newAnalysisBtn, retryBtn,
-                modalClose, copyJsonBtn, formatJsonBtn, jsonModal } = this.elements;
+                modalClose, copyJsonBtn, formatJsonBtn, timelineBtn, jsonModal } = this.elements;
 
         // File input
         dropArea.addEventListener('click', () => fileInput.click());
@@ -78,6 +79,7 @@ const app = {
         modalClose.addEventListener('click', () => this.closeModal());
         copyJsonBtn.addEventListener('click', () => this.copyJson());
         formatJsonBtn.addEventListener('click', () => this.formatJson());
+        timelineBtn.addEventListener('click', () => this.toggleTimeline());
         jsonModal.addEventListener('click', e => {
             if (e.target === jsonModal) this.closeModal();
         });
@@ -670,6 +672,12 @@ const app = {
         this.elements.jsonContent.textContent = this.currentJsonContent;
         this.elements.jsonModal.classList.add('visible');
         document.body.style.overflow = 'hidden';
+        
+        // Initialize timeline with JSON content
+        if (typeof Timeline !== 'undefined') {
+            const hasData = Timeline.init(this.currentJsonContent);
+            this.elements.timelineBtn.style.display = hasData ? 'inline-block' : 'none';
+        }
     },
 
     /**
@@ -678,6 +686,11 @@ const app = {
     closeModal() {
         this.elements.jsonModal.classList.remove('visible');
         document.body.style.overflow = '';
+        
+        // Hide timeline
+        if (typeof Timeline !== 'undefined') {
+            Timeline.hide();
+        }
 
         // Scroll back to the trigger element
         if (this.jsonTriggerElement) {
@@ -687,6 +700,15 @@ const app = {
             setTimeout(() => {
                 this.jsonTriggerElement.classList.remove('copy-flash');
             }, 500);
+        }
+    },
+    
+    /**
+     * Toggle timeline visibility
+     */
+    toggleTimeline() {
+        if (typeof Timeline !== 'undefined') {
+            Timeline.toggle();
         }
     },
 

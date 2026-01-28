@@ -28,7 +28,8 @@ class JsonParser {
 
             const parsed = this.parseLine(lines[i]);
             if (parsed) {
-                parsed._rawJson = lines[i].trim();
+                // Store repaired JSON if it was repaired, otherwise original
+                parsed._rawJson = parsed._repairedJson || lines[i].trim();
                 parsed._lineNumber = i + 1;
                 results.push(parsed);
             }
@@ -62,6 +63,7 @@ class JsonParser {
             try {
                 const parsed = this.normalizeKeys(JSON.parse(repaired));
                 parsed._wasRepaired = true;
+                parsed._repairedJson = repaired; // Store repaired version
                 this.repairedCount++;
                 return parsed;
             } catch (e) {
