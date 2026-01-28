@@ -136,10 +136,10 @@ class ReportGenerator {
         let html = `
             <div class="section">
                 <h2>📦 Operation Buckets</h2>
-                <p class="note">Click on an operation name to see detailed entries</p>
+                <p class="note">Click on a row to see detailed entries</p>
                 <div class="table-container">
                     <div class="table-header">Operations by Frequency (Threshold: ${result.threshold}ms)</div>
-                    <table class="data-table" id="buckets-table">
+                    <table class="data-table sortable-table" id="buckets-table">
                         <thead>
                             <tr>
                                 <th class="row-num">#</th>
@@ -153,6 +153,7 @@ class ReportGenerator {
                                 <th class="sortable" data-col="8">P99<span class="sort-icon">⇅</span></th>
                                 <th class="sortable" data-col="9">Max (ms)<span class="sort-icon">⇅</span></th>
                                 <th>NW Calls</th>
+                                <th>Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -173,6 +174,7 @@ class ReportGenerator {
                     <td data-sort="${bucket.p99}"><span class="num">${bucket.p99.toFixed(2)}</span></td>
                     <td data-sort="${bucket.max}"><span class="num">${bucket.max.toFixed(2)}</span></td>
                     <td><span class="num">${bucket.minNwCount}-${bucket.maxNwCount}</span></td>
+                    <td><button class="btn-view" onclick="event.stopPropagation(); app.showBucket('${bucketId}')">📄 View</button></td>
                 </tr>
             `;
         });
