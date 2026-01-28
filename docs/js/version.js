@@ -1,9 +1,8 @@
 /**
  * Version info - updated automatically before each commit
- * Run: git rev-parse --short HEAD to get commit hash
  */
 const VERSION = {
-    commit: '5c0bad9',
+    commit: '5f6f9df',
     date: '2026-01-27'
 };
 

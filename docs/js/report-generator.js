@@ -211,6 +211,8 @@ class ReportGenerator {
             const jsonLen = entry.rawJson?.length || 0;
             const repairStatus = entry.wasRepaired ? '🔧 Repaired' : '✓ Valid';
             const repairClass = entry.wasRepaired ? 'warning' : 'success';
+            // Store raw JSON without HTML escaping - script tags don't render HTML
+            const safeJson = (entry.rawJson || '').replace(/<\/script>/gi, '<\\/script>');
             html += `
                 <tr>
                     <td class="row-num">${i + 1}</td>
@@ -221,7 +223,7 @@ class ReportGenerator {
                     <td>
                         <span class="${repairClass}" style="font-size:11px;margin-right:6px;">${repairStatus}</span>
                         <button class="btn-view" onclick="app.showJson('${jsonId}')">📄 View (${this.formatSize(jsonLen)})</button>
-                        <script type="application/json" id="${jsonId}">${this.escape(entry.rawJson || '')}</script>
+                        <script type="application/json" id="${jsonId}">${safeJson}</script>
                     </td>
                 </tr>
             `;
@@ -363,6 +365,8 @@ class ReportGenerator {
 
         entries.forEach((entry, i) => {
             const jsonId = `json-${++this.jsonIdCounter}`;
+            // Store raw JSON without HTML escaping - script tags don't render HTML
+            const safeJson = (entry.rawJson || '').replace(/<\/script>/gi, '<\\/script>');
             html += `
                 <tr>
                     <td class="row-num">${i + 1}</td>
@@ -372,7 +376,7 @@ class ReportGenerator {
                     <td><span class="str">${this.escape(entry.operationType)}</span></td>
                     <td>
                         <button class="btn-view" onclick="app.showJson('${jsonId}')">📄 View</button>
-                        <script type="application/json" id="${jsonId}">${this.escape(entry.rawJson || '')}</script>
+                        <script type="application/json" id="${jsonId}">${safeJson}</script>
                     </td>
                 </tr>
             `;

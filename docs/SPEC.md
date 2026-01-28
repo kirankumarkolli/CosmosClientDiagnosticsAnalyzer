@@ -8,6 +8,7 @@
 - **2026-01-28**: JSON column now shows repair status (✓ Valid or 🔧 Repaired) for each entry
 - **2026-01-28**: Modal close now scrolls back to originating table row with highlight flash
 - **2026-01-28**: Added version display (commit hash + date) in footer and exported reports
+- **2026-01-28**: Fixed JSON view - store raw JSON without HTML encoding so View/Format works correctly
 
 ---
 
@@ -116,6 +117,7 @@
 - Row numbers
 - Clickable rows to show detail sections
 - JSON viewer for raw data with repair status indicator (✓ Valid or 🔧 Repaired)
+- Raw JSON stored unencoded for proper View/Format functionality
 
 ### 5. UI/UX Design
 
