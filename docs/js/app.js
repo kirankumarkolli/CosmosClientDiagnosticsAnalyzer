@@ -314,14 +314,22 @@ const app = {
         const container = document.getElementById('systemMetricsChart');
         const dataEl = document.getElementById('systemMetricsChart-data');
         
+        console.log('initSystemMetricsChart - container:', !!container, 'dataEl:', !!dataEl, 'echarts:', !!window.echarts);
+        
         if (!container || !dataEl || !window.echarts) {
             console.log('System metrics chart skipped - missing elements or ECharts');
             return;
         }
 
+        // Log container dimensions
+        console.log('Container dimensions:', container.offsetWidth, 'x', container.offsetHeight);
+
         try {
             const data = JSON.parse(dataEl.textContent);
-            const chart = echarts.init(container, 'dark');
+            console.log('Parsed data - timestamps:', data.timestamps?.length, 'cpu:', data.cpu?.length);
+            
+            const chart = echarts.init(container, null, { renderer: 'canvas' });
+            console.log('ECharts instance created');
             
             const option = {
                 backgroundColor: 'transparent',
@@ -412,7 +420,11 @@ const app = {
             };
             
             chart.setOption(option);
+            console.log('System metrics chart setOption completed');
             this.chartInstances.push(chart);
+            
+            // Force a resize after a short delay to ensure proper rendering
+            setTimeout(() => chart.resize(), 100);
             
             // Handle resize
             window.addEventListener('resize', () => chart.resize());
@@ -429,11 +441,15 @@ const app = {
         const container = document.getElementById('clientConfigChart');
         const dataEl = document.getElementById('clientConfigChart-data');
         
+        console.log('initClientConfigChart - container:', !!container, 'dataEl:', !!dataEl);
+        
         if (!container || !dataEl || !window.echarts) return;
 
         try {
             const data = JSON.parse(dataEl.textContent);
-            const chart = echarts.init(container, 'dark');
+            console.log('Client config data - timestamps:', data.timestamps?.length);
+            
+            const chart = echarts.init(container, null, { renderer: 'canvas' });
             
             const option = {
                 backgroundColor: 'transparent',
@@ -499,6 +515,7 @@ const app = {
             
             chart.setOption(option);
             this.chartInstances.push(chart);
+            setTimeout(() => chart.resize(), 100);
             window.addEventListener('resize', () => chart.resize());
             console.log('Client config chart created successfully');
         } catch (e) {
@@ -520,8 +537,8 @@ const app = {
     destroyCharts() {
         if (this.chartInstances) {
             this.chartInstances.forEach(chart => {
-                if (chart && typeof chart.destroy === 'function') {
-                    chart.destroy();
+                if (chart && typeof chart.dispose === 'function') {
+                    chart.dispose();
                 }
             });
         }
