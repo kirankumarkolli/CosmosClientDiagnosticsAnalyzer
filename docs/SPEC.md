@@ -7,6 +7,7 @@
 - **2026-01-28**: Added repaired/failed JSON counts to Parsing Statistics summary
 - **2026-01-28**: JSON column now shows repair status (✓ Valid or 🔧 Repaired) for each entry
 - **2026-01-28**: Modal close now scrolls back to originating table row with highlight flash
+- **2026-01-28**: Added version display (commit hash + date) in footer and exported reports
 
 ---
 
@@ -144,6 +145,7 @@
 | Scripts | Minified embedded JS |
 | Interactivity | All features work offline |
 | Modal behavior | Closing JSON modal returns focus to originating row with highlight |
+| Version tracking | Git commit hash displayed in footer and embedded in exported reports |
 
 ---
 
@@ -155,6 +157,7 @@ docs/
 ├── css/
 │   └── styles.css          # Application styles
 └── js/
+    ├── version.js          # Version info (commit hash, date)
     ├── json-parser.js      # JSON parsing and repair
     ├── analyzer.js         # Analysis engine
     ├── report-generator.js # HTML report generation

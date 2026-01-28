@@ -630,6 +630,14 @@ footer a {
     text-decoration: none;
 }
 
+.version {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 10px;
+    font-family: 'Cascadia Code', Consolas, monospace;
+}
+}
+
 footer a:hover {
     text-decoration: underline;
 }

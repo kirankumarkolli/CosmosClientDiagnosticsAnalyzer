@@ -37,10 +37,21 @@ const app = {
             jsonContent: document.getElementById('jsonContent'),
             modalClose: document.getElementById('modalClose'),
             copyJsonBtn: document.getElementById('copyJsonBtn'),
-            formatJsonBtn: document.getElementById('formatJsonBtn')
+            formatJsonBtn: document.getElementById('formatJsonBtn'),
+            versionInfo: document.getElementById('versionInfo')
         };
 
         this.setupEventListeners();
+        this.displayVersion();
+    },
+
+    /**
+     * Display version info
+     */
+    displayVersion() {
+        if (window.VERSION && this.elements.versionInfo) {
+            this.elements.versionInfo.textContent = `Version: ${VERSION.commit} (${VERSION.date})`;
+        }
     },
 
     /**
@@ -484,7 +495,8 @@ const app = {
 <body>
     <div class="container">
         <h1>🔍 Cosmos Diagnostics Analysis Report</h1>
-        <p style="color: var(--text-muted); margin-bottom: 30px;">Generated: ${new Date().toISOString()}</p>
+        <p style="color: var(--text-muted); margin-bottom: 10px;">Generated: ${new Date().toISOString()}</p>
+        <p style="color: var(--text-muted); margin-bottom: 30px; font-family: monospace; font-size: 12px;">Analyzer Version: ${window.VERSION?.commit || 'unknown'} (${window.VERSION?.date || 'unknown'})</p>
         ${this.elements.resultsContainer.innerHTML}
     </div>
     <div id="jsonModal" class="modal">
