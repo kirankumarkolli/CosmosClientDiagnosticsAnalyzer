@@ -30,6 +30,11 @@
     padding: 0;
 }
 
+/* Respect hidden attribute */
+[hidden] {
+    display: none !important;
+}
+
 body {
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
     background: var(--bg-color);
