@@ -449,22 +449,61 @@ class ReportGenerator {
         let html = `
             <div class="section">
                 <h2>🚀 GroupBy LastTransportEvent</h2>
-                <p class="note">Click on an event to see phase breakdown and entries</p>
+                <p class="note">Click on a row to see phase breakdown and entries</p>
+                <div class="table-container">
+                    <table class="data-table" id="transport-table">
+                        <thead>
+                            <tr>
+                                <th class="row-num">#</th>
+                                <th class="sortable" data-col="1">Event<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="2">Count<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="3">Min (ms)<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="4">P50<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="5">P75<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="6">P90<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="7">P95<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="8">P99<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="9">Max (ms)<span class="sort-icon">⇅</span></th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
         `;
 
-        for (const group of groups) {
+        groups.forEach((group, i) => {
             const groupId = this.safeId(`transport-${group.status}`);
             html += `
-                <div class="subsection">
-                    <div class="collapsible-header" onclick="app.toggleSection('${groupId}')">
-                        <h4>${this.escape(group.status)} (${group.count} items) - P50: ${group.p50.toFixed(2)}ms, P75: ${group.p75.toFixed(2)}ms, P90: ${group.p90.toFixed(2)}ms, P95: ${group.p95.toFixed(2)}ms, P99: ${group.p99.toFixed(2)}ms</h4>
-                        <span class="collapse-icon" id="${groupId}-icon">▶</span>
-                    </div>
-                    <div id="${groupId}" class="collapsible-content">
-                        ${this.generatePhaseTable(group.phaseDetails, group.status)}
-                    </div>
+                <tr class="clickable-row" onclick="app.showGroup('${groupId}')">
+                    <td class="row-num">${i + 1}</td>
+                    <td data-sort="${this.escapeAttr(group.status)}"><span class="link">${this.escape(group.status)}</span></td>
+                    <td data-sort="${group.count}"><span class="num">${group.count.toLocaleString()}</span></td>
+                    <td data-sort="${group.min}"><span class="num">${group.min.toFixed(2)}</span></td>
+                    <td data-sort="${group.p50}"><span class="num">${group.p50.toFixed(2)}</span></td>
+                    <td data-sort="${group.p75}"><span class="num">${group.p75.toFixed(2)}</span></td>
+                    <td data-sort="${group.p90}"><span class="num">${group.p90.toFixed(2)}</span></td>
+                    <td data-sort="${group.p95}"><span class="num">${group.p95.toFixed(2)}</span></td>
+                    <td data-sort="${group.p99}"><span class="num">${group.p99.toFixed(2)}</span></td>
+                    <td data-sort="${group.max}"><span class="num">${group.max.toFixed(2)}</span></td>
+                    <td><button class="btn-view" onclick="event.stopPropagation(); app.showGroup('${groupId}')">📄 View</button></td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+
+        // Generate detail sections for each transport event
+        for (const group of groups) {
+            const groupId = this.safeId(`transport-${group.status}`);
+            const { tableHtml, detailSectionsHtml } = this.generatePhaseTable(group.phaseDetails, group.status);
+            html += `
+                <div id="group-${groupId}" class="detail-section">
+                    <button class="btn-close" onclick="app.closeGroup('${groupId}')">&times;</button>
+                    <h3>🚀 ${this.escape(group.status)} (${group.count} items)</h3>
+                    ${tableHtml}
                 </div>
             `;
+            // Add phase percentile detail sections at top level (outside transport detail)
+            html += detailSectionsHtml;
         }
 
         html += '</div>';
@@ -473,11 +512,12 @@ class ReportGenerator {
 
     /**
      * Generate phase details table
+     * Returns { tableHtml, detailSectionsHtml } so detail sections can be placed at top level
      */
     generatePhaseTable(phases, transportEvent) {
-        if (!phases || phases.length === 0) return '<p class="note">No phase data available</p>';
+        if (!phases || phases.length === 0) return { tableHtml: '<p class="note">No phase data available</p>', detailSectionsHtml: '' };
 
-        let html = `
+        let tableHtml = `
             <div class="table-container">
                 <div class="table-header">Phase Breakdown</div>
                 <p class="note">Click percentile values to view entries in that range</p>
@@ -500,32 +540,36 @@ class ReportGenerator {
 
         phases.forEach((phase, i) => {
             const phaseId = this.safeId(`phase-${transportEvent}-${phase.phase}`);
-            html += `
+            // Pre-calculate which percentile groups have entries
+            const groups = this.getPhasePercentileGroups(phase);
+            
+            tableHtml += `
                 <tr>
                     <td class="row-num">${i + 1}</td>
                     <td><span class="str">${this.escape(phase.phase)}</span></td>
                     <td><span class="num">${phase.count.toLocaleString()}</span></td>
-                    <td><a href="#${phaseId}-p50" class="percentile-link" onclick="app.toggleSection('${phaseId}-entries'); return false;"><span class="num">${phase.p50.toFixed(2)}</span></a></td>
-                    <td><a href="#${phaseId}-p75" class="percentile-link" onclick="app.toggleSection('${phaseId}-entries'); return false;"><span class="num">${phase.p75.toFixed(2)}</span></a></td>
-                    <td><a href="#${phaseId}-p90" class="percentile-link" onclick="app.toggleSection('${phaseId}-entries'); return false;"><span class="num">${phase.p90.toFixed(2)}</span></a></td>
-                    <td><a href="#${phaseId}-p95" class="percentile-link" onclick="app.toggleSection('${phaseId}-entries'); return false;"><span class="num">${phase.p95.toFixed(2)}</span></a></td>
-                    <td><a href="#${phaseId}-p99" class="percentile-link" onclick="app.toggleSection('${phaseId}-entries'); return false;"><span class="num">${phase.p99.toFixed(2)}</span></a></td>
+                    <td>${groups.p50.length > 0 ? `<a href="#" class="percentile-link" onclick="app.showGroup('${phaseId}-p50'); return false;"><span class="num">${phase.p50.toFixed(2)}</span></a>` : `<span class="num">${phase.p50.toFixed(2)}</span>`}</td>
+                    <td>${groups.p75.length > 0 ? `<a href="#" class="percentile-link" onclick="app.showGroup('${phaseId}-p75'); return false;"><span class="num">${phase.p75.toFixed(2)}</span></a>` : `<span class="num">${phase.p75.toFixed(2)}</span>`}</td>
+                    <td>${groups.p90.length > 0 ? `<a href="#" class="percentile-link" onclick="app.showGroup('${phaseId}-p90'); return false;"><span class="num">${phase.p90.toFixed(2)}</span></a>` : `<span class="num">${phase.p90.toFixed(2)}</span>`}</td>
+                    <td>${groups.p95.length > 0 ? `<a href="#" class="percentile-link" onclick="app.showGroup('${phaseId}-p95'); return false;"><span class="num">${phase.p95.toFixed(2)}</span></a>` : `<span class="num">${phase.p95.toFixed(2)}</span>`}</td>
+                    <td>${groups.p99.length > 0 ? `<a href="#" class="percentile-link" onclick="app.showGroup('${phaseId}-p99'); return false;"><span class="num">${phase.p99.toFixed(2)}</span></a>` : `<span class="num">${phase.p99.toFixed(2)}</span>`}</td>
                     <td><span class="num">${phase.endpointCount}</span></td>
                 </tr>
             `;
         });
 
-        html += '</tbody></table></div>';
+        tableHtml += '</tbody></table></div>';
         
-        // Add collapsible entries section for each phase
+        // Collect detail sections for phase percentile groups (will be placed at top level)
+        let detailSectionsHtml = '';
         for (const phase of phases) {
             const phaseId = this.safeId(`phase-${transportEvent}-${phase.phase}`);
-            html += this.generatePhaseEntriesSection(phase, phaseId);
+            detailSectionsHtml += this.generatePhasePercentileSections(phase, phaseId);
         }
 
         // Top endpoints
         for (const phase of phases.filter(p => p.topEndpoints.length > 0)) {
-            html += `
+            tableHtml += `
                 <details style="margin: 10px 0;">
                     <summary style="cursor: pointer; color: var(--accent-color);">
                         Top Endpoints for ${this.escape(phase.phase)} (${phase.topEndpoints.length})
@@ -554,24 +598,23 @@ class ReportGenerator {
             `;
         }
 
-        return html;
+        return { tableHtml, detailSectionsHtml };
     }
 
     /**
-     * Generate phase entries section with percentile-based grouping
+     * Get entries grouped by percentile range for a phase
+     * P50: (0, P50], P75: (P50, P75], P90: (P75, P90], P95: (P90, P95], P99: (P95, P99+]
      */
-    generatePhaseEntriesSection(phase, phaseId) {
-        if (!phase.entries || phase.entries.length === 0) return '';
-
-        // Group entries by percentile range
+    getPhasePercentileGroups(phase) {
         const groups = {
             p50: [],
             p75: [],
             p90: [],
             p95: [],
-            p99: [],
-            above: []
+            p99: []
         };
+
+        if (!phase.entries) return groups;
 
         for (const entry of phase.entries) {
             const dur = entry.durationInMs;
@@ -583,49 +626,44 @@ class ReportGenerator {
                 groups.p90.push(entry);
             } else if (dur <= phase.p95) {
                 groups.p95.push(entry);
-            } else if (dur <= phase.p99) {
-                groups.p99.push(entry);
             } else {
-                groups.above.push(entry);
+                // P99 includes everything above P95 (>P95)
+                groups.p99.push(entry);
             }
         }
 
-        let html = `
-            <div class="collapsible-header" onclick="app.toggleSection('${phaseId}-entries')" style="margin-top: 10px;">
-                <h5>📊 ${this.escape(phase.phase)} Entries (${phase.entries.length})</h5>
-                <span class="collapse-icon" id="${phaseId}-entries-icon">▶</span>
-            </div>
-            <div id="${phaseId}-entries" class="collapsible-content">
-        `;
+        return groups;
+    }
 
-        // Generate group for each percentile range
+    /**
+     * Generate detail sections for each percentile group of a phase
+     */
+    generatePhasePercentileSections(phase, phaseId) {
+        const groups = this.getPhasePercentileGroups(phase);
+        let html = '';
+
         const groupDefs = [
             { key: 'p50', label: `≤P50 (≤${phase.p50.toFixed(2)}ms)` },
             { key: 'p75', label: `P50-P75 (${phase.p50.toFixed(2)}-${phase.p75.toFixed(2)}ms]` },
             { key: 'p90', label: `P75-P90 (${phase.p75.toFixed(2)}-${phase.p90.toFixed(2)}ms]` },
             { key: 'p95', label: `P90-P95 (${phase.p90.toFixed(2)}-${phase.p95.toFixed(2)}ms]` },
-            { key: 'p99', label: `P95-P99 (${phase.p95.toFixed(2)}-${phase.p99.toFixed(2)}ms]` },
-            { key: 'above', label: `>P99 (>${phase.p99.toFixed(2)}ms)` }
+            { key: 'p99', label: `>P95 (>${phase.p95.toFixed(2)}ms)` }
         ];
 
         for (const { key, label } of groupDefs) {
             if (groups[key].length > 0) {
                 const groupId = `${phaseId}-${key}`;
                 html += `
-                    <div class="percentile-group">
-                        <div class="collapsible-header" onclick="app.toggleSection('${groupId}')">
-                            <span class="percentile-badge ${key}">${label} (${groups[key].length})</span>
-                            <span class="collapse-icon" id="${groupId}-icon">▶</span>
-                        </div>
-                        <div id="${groupId}" class="collapsible-content">
-                            ${this.generatePhaseEntryTable(groups[key])}
-                        </div>
+                    <div id="group-${groupId}" class="detail-section">
+                        <button class="btn-close" onclick="app.closeGroup('${groupId}')">&times;</button>
+                        <h3>📊 ${this.escape(phase.phase)} - ${label}</h3>
+                        <p class="note">${groups[key].length} entries in this range</p>
+                        ${this.generatePhaseEntryTable(groups[key])}
                     </div>
                 `;
             }
         }
 
-        html += '</div>';
         return html;
     }
 

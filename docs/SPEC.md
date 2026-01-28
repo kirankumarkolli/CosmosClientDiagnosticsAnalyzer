@@ -144,9 +144,9 @@ value = sortedArray[max(0, min(index, count - 1))]
 | **Client Configuration Time Plot** | Interactive chart with ProcessorCount, ClientsCreated, ActiveClients over time |
 | Operation Buckets | Table with clickable percentile drill-down |
 | High Latency Network | Top 100 interactions (collapsible) |
-| GroupBy ResourceType→OperationType | Grouped table with entries |
-| GroupBy StatusCode→SubStatusCode | Grouped table with entries |
-| GroupBy LastTransportEvent | With phase breakdown, percentile drill-down, and endpoint stats |
+| GroupBy ResourceType→OperationType | Sortable table, click row to expand entries |
+| GroupBy StatusCode→SubStatusCode | Sortable table, click row to expand entries |
+| GroupBy LastTransportEvent | Sortable table, click row to expand phase breakdown with percentile drill-down and endpoint stats |
 
 **System Metrics Time Plot:**
 | Metric | JSON Path | Display |
