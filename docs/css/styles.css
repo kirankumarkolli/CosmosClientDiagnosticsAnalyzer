@@ -132,6 +132,80 @@ header h1 {
     display: inline-block;
 }
 
+/* Supported Formats */
+.supported-formats {
+    margin: 20px auto;
+    max-width: 600px;
+}
+
+.supported-formats summary {
+    cursor: pointer;
+    color: var(--link-color);
+    font-size: 14px;
+    padding: 8px;
+    text-align: center;
+}
+
+.supported-formats summary:hover {
+    color: var(--accent-hover);
+}
+
+.formats-content {
+    margin-top: 15px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.format-group {
+    margin-bottom: 15px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.format-group:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.format-group h4 {
+    color: var(--accent-color);
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.format-group code {
+    background: var(--bg-tertiary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--string-color);
+    margin-right: 5px;
+}
+
+.format-group .format-desc {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.format-group ul {
+    margin: 8px 0 0 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
+.format-group li {
+    margin: 4px 0;
+}
+
+.format-group li code {
+    color: var(--number-color);
+}
+
 /* Options */
 .options {
     margin: 25px 0;

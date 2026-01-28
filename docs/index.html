@@ -26,6 +26,34 @@
                 <div class="file-info" id="fileInfo"></div>
             </div>
             
+            <div class="supported-formats">
+                <details>
+                    <summary>📋 Supported File Formats & Content</summary>
+                    <div class="formats-content">
+                        <div class="format-group">
+                            <h4>📄 Text Files</h4>
+                            <p><code>.txt</code> <code>.json</code> <code>.log</code></p>
+                            <p class="format-desc">One JSON diagnostics entry per line (JSONL format)</p>
+                        </div>
+                        <div class="format-group">
+                            <h4>📊 Excel Files</h4>
+                            <p><code>.xlsx</code> <code>.xls</code> <code>.xlsb</code> <code>.csv</code> <code>.ods</code></p>
+                            <p class="format-desc">Diagnostics JSON in <strong>Column A</strong> (first sheet only)</p>
+                        </div>
+                        <div class="format-group">
+                            <h4>🔍 Expected JSON Structure</h4>
+                            <p class="format-desc">Azure Cosmos DB client diagnostics with:</p>
+                            <ul>
+                                <li><code>Summary</code> - DirectCalls, GatewayCalls</li>
+                                <li><code>name</code> - Operation name</li>
+                                <li><code>duration in milliseconds</code> - Latency</li>
+                                <li><code>children[].data["Client Side Request Stats"]</code> - Network stats</li>
+                            </ul>
+                        </div>
+                    </div>
+                </details>
+            </div>
+            
             <div class="options">
                 <label>
                     <span>Latency Threshold (ms):</span>
