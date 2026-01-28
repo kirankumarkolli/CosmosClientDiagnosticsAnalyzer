@@ -59,6 +59,10 @@ class ReportGenerator {
      * Generate summary section
      */
     generateSummary(result) {
+        const repairedEntries = result.repairedEntries || 0;
+        const failedEntries = result.failedEntries || 0;
+        const parsedEntries = result.parsedEntries || result.totalEntries;
+        
         return `
             <div class="section">
                 <h2>📊 Summary</h2>
@@ -75,23 +79,38 @@ class ReportGenerator {
                         <tbody>
                             <tr>
                                 <td class="row-num">1</td>
-                                <td>Total Entries</td>
+                                <td>Total Lines</td>
                                 <td><span class="num">${result.totalEntries.toLocaleString()}</span></td>
                             </tr>
                             <tr>
                                 <td class="row-num">2</td>
+                                <td>Successfully Parsed</td>
+                                <td><span class="num">${parsedEntries.toLocaleString()}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="row-num">3</td>
+                                <td>Repaired (Truncated JSON Fixed)</td>
+                                <td><span class="num ${repairedEntries > 0 ? 'success' : ''}">${repairedEntries.toLocaleString()}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="row-num">4</td>
+                                <td>Failed to Parse</td>
+                                <td><span class="num ${failedEntries > 0 ? 'error' : ''}">${failedEntries.toLocaleString()}</span></td>
+                            </tr>
+                            <tr>
+                                <td class="row-num">5</td>
                                 <td>Latency Threshold</td>
                                 <td><span class="num">${result.threshold.toLocaleString()} ms</span></td>
                             </tr>
                             <tr>
-                                <td class="row-num">3</td>
+                                <td class="row-num">6</td>
                                 <td>High Latency Entries</td>
                                 <td><span class="num ${result.highLatencyEntries > 0 ? 'warning' : ''}">${result.highLatencyEntries.toLocaleString()}</span></td>
                             </tr>
                             <tr>
-                                <td class="row-num">4</td>
+                                <td class="row-num">7</td>
                                 <td>High Latency Rate</td>
-                                <td><span class="num">${((result.highLatencyEntries / result.totalEntries) * 100).toFixed(2)}%</span></td>
+                                <td><span class="num">${((result.highLatencyEntries / parsedEntries) * 100).toFixed(2)}%</span></td>
                             </tr>
                         </tbody>
                     </table>
