@@ -21,8 +21,16 @@ class Analyzer {
             resourceTypeGroups: [],
             statusCodeGroups: [],
             transportEventGroups: [],
-            allHighLatencyDiagnostics: []
+            allHighLatencyDiagnostics: [],
+            systemMetrics: null,
+            clientConfig: null
         };
+
+        if (progressCallback) progressCallback('Extracting system metrics...', 40);
+        
+        // Extract system metrics and client config from ALL entries
+        result.systemMetrics = this.extractSystemMetrics(diagnostics);
+        result.clientConfig = this.extractClientConfig(diagnostics);
 
         if (progressCallback) progressCallback('Filtering high latency entries...', 45);
 
@@ -355,6 +363,140 @@ class Analyzer {
                 };
             })
             .sort((a, b) => b.count - a.count);
+    }
+
+    /**
+     * Extract system metrics from all diagnostics entries
+     * @param {Array} diagnostics - Parsed diagnostics objects
+     * @returns {Object} System metrics with snapshots and statistics
+     */
+    extractSystemMetrics(diagnostics) {
+        const snapshots = [];
+        
+        for (const diag of diagnostics) {
+            const children = this.getRecursiveChildren(diag);
+            const diagTime = diag.startTime || diag['start datetime'];
+            
+            for (const child of children) {
+                const systemInfo = child.data?.clientSideRequestStats?.SystemInfo ||
+                                   child.data?.['Client Side Request Stats']?.SystemInfo ||
+                                   child.data?.clientSideRequestStats?.systemInfo ||
+                                   child.data?.['Client Side Request Stats']?.systemInfo;
+                
+                if (!systemInfo?.systemHistory) continue;
+                
+                for (const entry of systemInfo.systemHistory) {
+                    const snapshot = {
+                        timestamp: entry.DateUtc || entry.dateUtc || diagTime,
+                        cpu: entry.Cpu ?? entry.cpu ?? 0,
+                        memoryBytes: entry.Memory ?? entry.memory ?? 0,
+                        memoryMB: (entry.Memory ?? entry.memory ?? 0) / (1024 * 1024),
+                        threadWaitMs: entry.ThreadInfo?.ThreadWaitIntervalInMs ?? 
+                                      entry.threadInfo?.threadWaitIntervalInMs ?? 0,
+                        tcpConnections: entry.NumberOfOpenTcpConnection ?? 
+                                        entry.numberOfOpenTcpConnection ?? 0,
+                        availableThreads: entry.ThreadInfo?.AvailableThreads ?? 
+                                          entry.threadInfo?.availableThreads ?? 0,
+                        isThreadStarving: entry.ThreadInfo?.IsThreadStarving ?? 
+                                          entry.threadInfo?.isThreadStarving ?? 'N/A'
+                    };
+                    snapshots.push(snapshot);
+                }
+            }
+        }
+        
+        // Sort by timestamp
+        snapshots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Calculate statistics for each metric
+        const cpuValues = snapshots.map(s => s.cpu).filter(v => v != null).sort((a, b) => a - b);
+        const memoryValues = snapshots.map(s => s.memoryMB).filter(v => v != null).sort((a, b) => a - b);
+        const threadWaitValues = snapshots.map(s => s.threadWaitMs).filter(v => v != null).sort((a, b) => a - b);
+        const tcpValues = snapshots.map(s => s.tcpConnections).filter(v => v != null).sort((a, b) => a - b);
+        
+        return {
+            snapshots: snapshots.slice(0, 500), // Limit for performance
+            totalSnapshots: snapshots.length,
+            stats: {
+                cpu: this.computeMetricStats(cpuValues),
+                memory: this.computeMetricStats(memoryValues),
+                threadWait: this.computeMetricStats(threadWaitValues),
+                tcpConnections: this.computeMetricStats(tcpValues)
+            }
+        };
+    }
+
+    /**
+     * Extract client configuration metrics from all diagnostics entries
+     * @param {Array} diagnostics - Parsed diagnostics objects
+     * @returns {Object} Client config with snapshots and statistics
+     */
+    extractClientConfig(diagnostics) {
+        const snapshots = [];
+        
+        for (const diag of diagnostics) {
+            const config = diag.data?.['Client Configuration'] || 
+                           diag.data?.clientConfiguration ||
+                           diag.data?.ClientConfiguration;
+            
+            if (!config) continue;
+            
+            const snapshot = {
+                timestamp: diag.startTime || diag['start datetime'],
+                processorCount: config.ProcessorCount ?? config.processorCount ?? 0,
+                clientsCreated: config.NumberOfClientsCreated ?? config.numberOfClientsCreated ?? 0,
+                activeClients: config.NumberOfActiveClients ?? config.numberOfActiveClients ?? 0,
+                machineId: config.MachineId ?? config.machineId ?? '',
+                connectionMode: config.ConnectionMode ?? config.connectionMode ?? '',
+                userAgent: config.UserAgent ?? config.userAgent ?? ''
+            };
+            snapshots.push(snapshot);
+        }
+        
+        // Sort by timestamp
+        snapshots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        
+        // Calculate statistics
+        const processorValues = snapshots.map(s => s.processorCount).filter(v => v != null).sort((a, b) => a - b);
+        const createdValues = snapshots.map(s => s.clientsCreated).filter(v => v != null).sort((a, b) => a - b);
+        const activeValues = snapshots.map(s => s.activeClients).filter(v => v != null).sort((a, b) => a - b);
+        
+        return {
+            snapshots: snapshots.slice(0, 500), // Limit for performance
+            totalSnapshots: snapshots.length,
+            stats: {
+                processorCount: this.computeMetricStats(processorValues),
+                clientsCreated: this.computeMetricStats(createdValues),
+                activeClients: this.computeMetricStats(activeValues)
+            },
+            // Also store unique values for display
+            uniqueMachines: [...new Set(snapshots.map(s => s.machineId).filter(Boolean))],
+            connectionModes: [...new Set(snapshots.map(s => s.connectionMode).filter(Boolean))]
+        };
+    }
+
+    /**
+     * Compute statistics for a metric array
+     * @param {Array} sortedValues - Sorted array of numeric values
+     * @returns {Object} Statistics object
+     */
+    computeMetricStats(sortedValues) {
+        if (sortedValues.length === 0) {
+            return { min: 0, max: 0, avg: 0, p50: 0, p75: 0, p90: 0, p95: 0, p99: 0, count: 0 };
+        }
+        
+        const sum = sortedValues.reduce((a, b) => a + b, 0);
+        return {
+            min: sortedValues[0],
+            max: sortedValues[sortedValues.length - 1],
+            avg: sum / sortedValues.length,
+            p50: this.percentile(sortedValues, 50),
+            p75: this.percentile(sortedValues, 75),
+            p90: this.percentile(sortedValues, 90),
+            p95: this.percentile(sortedValues, 95),
+            p99: this.percentile(sortedValues, 99),
+            count: sortedValues.length
+        };
     }
 }
 

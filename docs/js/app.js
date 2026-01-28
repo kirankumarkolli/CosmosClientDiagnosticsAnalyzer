@@ -212,6 +212,7 @@ const app = {
 
             // Display
             this.elements.resultsContainer.innerHTML = html;
+            this.initializeCharts();
             this.showSection('results');
 
         } catch (error) {
@@ -282,7 +283,126 @@ const app = {
         this.elements.analyzeBtn.disabled = true;
         this.elements.progressFill.style.width = '0%';
         this.elements.resultsContainer.innerHTML = '';
+        this.destroyCharts();
         this.showSection('upload');
+    },
+
+    /**
+     * Store chart instances for cleanup
+     */
+    chartInstances: [],
+
+    /**
+     * Initialize Chart.js charts after rendering
+     */
+    initializeCharts() {
+        this.destroyCharts();
+        
+        // System Metrics Chart
+        const systemCanvas = document.getElementById('systemMetricsChart');
+        if (systemCanvas && window.Chart) {
+            const dataEl = document.getElementById('systemMetricsChart-data');
+            if (dataEl) {
+                try {
+                    const chartData = JSON.parse(dataEl.textContent);
+                    const chart = new Chart(systemCanvas.getContext('2d'), {
+                        type: 'line',
+                        data: chartData,
+                        options: this.getChartOptions('System Metrics', [
+                            { id: 'y', title: 'CPU (%)', position: 'left' },
+                            { id: 'y1', title: 'Memory (MB)', position: 'right' },
+                            { id: 'y2', title: 'Thread Wait (ms)', position: 'right', display: false },
+                            { id: 'y3', title: 'TCP Connections', position: 'right', display: false }
+                        ])
+                    });
+                    this.chartInstances.push(chart);
+                } catch (e) {
+                    console.error('Error creating system metrics chart:', e);
+                }
+            }
+        }
+
+        // Client Config Chart
+        const configCanvas = document.getElementById('clientConfigChart');
+        if (configCanvas && window.Chart) {
+            const dataEl = document.getElementById('clientConfigChart-data');
+            if (dataEl) {
+                try {
+                    const chartData = JSON.parse(dataEl.textContent);
+                    const chart = new Chart(configCanvas.getContext('2d'), {
+                        type: 'line',
+                        data: chartData,
+                        options: this.getChartOptions('Client Configuration', [
+                            { id: 'y', title: 'Processor Count', position: 'left' },
+                            { id: 'y1', title: 'Client Count', position: 'right' }
+                        ])
+                    });
+                    this.chartInstances.push(chart);
+                } catch (e) {
+                    console.error('Error creating client config chart:', e);
+                }
+            }
+        }
+    },
+
+    /**
+     * Get chart options with multiple Y axes
+     */
+    getChartOptions(title, yAxes) {
+        const scales = {
+            x: {
+                type: 'category',
+                display: true,
+                title: { display: true, text: 'Time', color: '#d4d4d4' },
+                ticks: { color: '#d4d4d4', maxRotation: 45, maxTicksLimit: 20 },
+                grid: { color: 'rgba(255,255,255,0.1)' }
+            }
+        };
+
+        yAxes.forEach((axis, i) => {
+            scales[axis.id] = {
+                type: 'linear',
+                display: axis.display !== false,
+                position: axis.position,
+                title: { display: true, text: axis.title, color: '#d4d4d4' },
+                ticks: { color: '#d4d4d4' },
+                grid: { color: i === 0 ? 'rgba(255,255,255,0.1)' : 'transparent' }
+            };
+        });
+
+        return {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: {
+                    labels: { color: '#d4d4d4' },
+                    onClick: (e, legendItem, legend) => {
+                        const index = legendItem.datasetIndex;
+                        const chart = legend.chart;
+                        const meta = chart.getDatasetMeta(index);
+                        meta.hidden = meta.hidden === null ? !chart.data.datasets[index].hidden : null;
+                        chart.update();
+                    }
+                },
+                title: { display: false }
+            },
+            scales: scales
+        };
+    },
+
+    /**
+     * Destroy existing chart instances
+     */
+    destroyCharts() {
+        if (this.chartInstances) {
+            this.chartInstances.forEach(chart => {
+                if (chart && typeof chart.destroy === 'function') {
+                    chart.destroy();
+                }
+            });
+        }
+        this.chartInstances = [];
     },
 
     /**
@@ -490,6 +610,7 @@ const app = {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cosmos Diagnostics Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><\/script>
     <style>${this.getEmbeddedStyles()}</style>
 </head>
 <body>
@@ -578,6 +699,30 @@ function copyJson(){navigator.clipboard.writeText(currentJson).then(()=>{const b
 function formatJson(){try{const f=JSON.stringify(JSON.parse(currentJson),null,2);currentJson=f;document.getElementById('jsonContent').textContent=f;const b=event.target;b.textContent='✓ Formatted!';setTimeout(()=>b.textContent='🔧 Format',2000)}catch(e){alert('Invalid JSON')}}
 document.addEventListener('click',e=>{const th=e.target.closest('th.sortable');if(th){const t=th.closest('table'),c=parseInt(th.dataset.col);if(t&&!isNaN(c)){const tb=t.querySelector('tbody');if(!tb)return;const r=Array.from(tb.querySelectorAll('tr')),a=th.classList.contains('asc');t.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('asc','desc'));th.classList.add(a?'desc':'asc');const d=a?-1:1;r.sort((x,y)=>{const ca=x.cells[c],cb=y.cells[c];if(!ca||!cb)return 0;let va=ca.dataset.sort||ca.textContent.trim(),vb=cb.dataset.sort||cb.textContent.trim();const na=parseFloat(va),nb=parseFloat(vb);return!isNaN(na)&&!isNaN(nb)?(na-nb)*d:va.localeCompare(vb)*d});r.forEach((row,i)=>{if(row.cells[0])row.cells[0].textContent=i+1;tb.appendChild(row)})}}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+
+// Initialize charts on load
+function initCharts(){
+    const chartOpts=(yAxes)=>({
+        responsive:true,maintainAspectRatio:false,
+        interaction:{mode:'index',intersect:false},
+        plugins:{legend:{labels:{color:'#d4d4d4'}}},
+        scales:Object.assign({x:{type:'category',display:true,ticks:{color:'#d4d4d4',maxRotation:45,maxTicksLimit:20},grid:{color:'rgba(255,255,255,0.1)'}}},
+            yAxes.reduce((a,y,i)=>(a[y.id]={type:'linear',display:y.display!==false,position:y.position,title:{display:true,text:y.title,color:'#d4d4d4'},ticks:{color:'#d4d4d4'},grid:{color:i===0?'rgba(255,255,255,0.1)':'transparent'}},a),{}))
+    });
+    ['systemMetricsChart','clientConfigChart'].forEach(id=>{
+        const c=document.getElementById(id),d=document.getElementById(id+'-data');
+        if(c&&d&&window.Chart){
+            try{
+                const data=JSON.parse(d.textContent);
+                const yAxes=id==='systemMetricsChart'?
+                    [{id:'y',title:'CPU (%)',position:'left'},{id:'y1',title:'Memory (MB)',position:'right'},{id:'y2',title:'Thread Wait (ms)',position:'right',display:false},{id:'y3',title:'TCP Connections',position:'right',display:false}]:
+                    [{id:'y',title:'Processor Count',position:'left'},{id:'y1',title:'Client Count',position:'right'}];
+                new Chart(c.getContext('2d'),{type:'line',data:data,options:chartOpts(yAxes)});
+            }catch(e){console.error('Chart error:',e)}
+        }
+    });
+}
+if(document.readyState==='complete')initCharts();else window.addEventListener('load',initCharts);
 `;
     }
 };

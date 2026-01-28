@@ -38,6 +38,8 @@
 **Critical nested data:**
 - `children[].data["Client Side Request Stats"].StoreResponseStatistics[]` - Network interactions
 - `transportRequestTimeline.requestTimeline[]` - Request phase timing (Created, ChannelAcquisitionStarted, Pipelined, Transit Time, Received, Completed)
+- `data["Client Configuration"]` - Client configuration metrics
+- `children[].data["Client Side Request Stats"].SystemInfo.systemHistory[]` - System metrics over time
 - Status codes, latencies, replica health, exceptions
 
 ---
@@ -50,6 +52,7 @@
 - **Client-side only** - Data never leaves browser
 - **GitHub Pages compatible** - Static files in `/docs` folder
 - **Single-file export** - Generate standalone HTML reports
+- **Chart.js** - Use Chart.js library for time-series plots (CDN or embedded)
 
 ### Browser Support
 - Modern browsers (Chrome, Firefox, Edge, Safari)
@@ -134,11 +137,32 @@ value = sortedArray[max(0, min(index, count - 1))]
 | Section | Content |
 |---------|---------|
 | Summary | Total lines, successfully parsed, repaired (truncated JSON fixed), failed to parse, latency threshold, high-latency count, high-latency rate |
+| **System Metrics Time Plot** | Interactive chart with CPU%, Memory (MB), Thread Wait (ms), TCP Connections over time |
+| **Client Configuration Time Plot** | Interactive chart with ProcessorCount, ClientsCreated, ActiveClients over time |
 | Operation Buckets | Table with clickable percentile drill-down |
 | High Latency Network | Top 100 interactions (collapsible) |
 | GroupBy ResourceType→OperationType | Grouped table with entries |
 | GroupBy StatusCode→SubStatusCode | Grouped table with entries |
 | GroupBy LastTransportEvent | With phase breakdown, percentile drill-down, and endpoint stats |
+
+**System Metrics Time Plot:**
+| Metric | JSON Path | Display |
+|--------|-----------|---------|
+| CPU (%) | `systemHistory[].Cpu` | Blue line (#4fc3f7) |
+| Memory (MB) | `systemHistory[].Memory` / 1MB | Green line (#81c784) |
+| Thread Wait (ms) | `systemHistory[].ThreadInfo.ThreadWaitIntervalInMs` | Orange line (#ffb74d) |
+| TCP Connections | `systemHistory[].NumberOfOpenTcpConnection` | Purple line (#ba68c8) |
+
+Statistics table: Min, P50, P75, P90, P95, P99, Max, Avg for each metric.
+
+**Client Configuration Time Plot:**
+| Metric | JSON Path | Display |
+|--------|-----------|---------|
+| ProcessorCount | `data["Client Configuration"].ProcessorCount` | Teal line |
+| ClientsCreated | `data["Client Configuration"].NumberOfClientsCreated` | Green line |
+| ActiveClients | `data["Client Configuration"].NumberOfActiveClients` | Orange line |
+
+Statistics table: Min, P50, P75, P90, P95, P99, Max, Avg for each metric.
 
 **Table Features:**
 - Sortable columns (click header to toggle asc/desc)

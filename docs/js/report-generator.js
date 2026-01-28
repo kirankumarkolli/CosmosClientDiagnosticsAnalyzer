@@ -19,6 +19,16 @@ class ReportGenerator {
         // Summary section
         html += this.generateSummary(result);
 
+        // System Metrics Time Plot (new)
+        if (result.systemMetrics && result.systemMetrics.snapshots.length > 0) {
+            html += this.generateSystemMetricsSection(result.systemMetrics);
+        }
+
+        // Client Configuration Time Plot (new)
+        if (result.clientConfig && result.clientConfig.snapshots.length > 0) {
+            html += this.generateClientConfigSection(result.clientConfig);
+        }
+
         // Operation buckets
         if (result.operationBuckets.length > 0) {
             html += this.generateOperationBuckets(result);
@@ -664,6 +674,193 @@ class ReportGenerator {
                         <button class="btn-view" onclick="app.showJson('${jsonId}')">📄 View</button>
                         <script type="application/json" id="${jsonId}">${safeJson}</script>
                     </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
+        return html;
+    }
+
+    /**
+     * Generate System Metrics Time Plot section
+     */
+    generateSystemMetricsSection(metrics) {
+        const chartId = 'systemMetricsChart';
+        const chartData = JSON.stringify({
+            labels: metrics.snapshots.map(s => s.timestamp),
+            datasets: [
+                {
+                    label: 'CPU (%)',
+                    data: metrics.snapshots.map(s => s.cpu),
+                    borderColor: '#4fc3f7',
+                    backgroundColor: 'rgba(79, 195, 247, 0.1)',
+                    yAxisID: 'y',
+                    tension: 0.1
+                },
+                {
+                    label: 'Memory (MB)',
+                    data: metrics.snapshots.map(s => s.memoryMB),
+                    borderColor: '#81c784',
+                    backgroundColor: 'rgba(129, 199, 132, 0.1)',
+                    yAxisID: 'y1',
+                    tension: 0.1
+                },
+                {
+                    label: 'Thread Wait (ms)',
+                    data: metrics.snapshots.map(s => s.threadWaitMs),
+                    borderColor: '#ffb74d',
+                    backgroundColor: 'rgba(255, 183, 77, 0.1)',
+                    yAxisID: 'y2',
+                    tension: 0.1
+                },
+                {
+                    label: 'TCP Connections',
+                    data: metrics.snapshots.map(s => s.tcpConnections),
+                    borderColor: '#ba68c8',
+                    backgroundColor: 'rgba(186, 104, 200, 0.1)',
+                    yAxisID: 'y3',
+                    tension: 0.1
+                }
+            ]
+        });
+
+        let html = `
+            <div class="section">
+                <h2>📈 System Metrics Time Plot</h2>
+                <p class="note">Showing ${metrics.snapshots.length} of ${metrics.totalSnapshots} snapshots. Click legend to toggle series.</p>
+                <div class="chart-container" style="height: 400px; position: relative;">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+                <script type="application/json" id="${chartId}-data">${chartData}</script>
+                ${this.generateMetricsStatsTable(metrics.stats, 'System Metrics Statistics')}
+            </div>
+        `;
+
+        return html;
+    }
+
+    /**
+     * Generate Client Configuration Time Plot section
+     */
+    generateClientConfigSection(config) {
+        const chartId = 'clientConfigChart';
+        const chartData = JSON.stringify({
+            labels: config.snapshots.map(s => s.timestamp),
+            datasets: [
+                {
+                    label: 'Processor Count',
+                    data: config.snapshots.map(s => s.processorCount),
+                    borderColor: '#26c6da',
+                    backgroundColor: 'rgba(38, 198, 218, 0.1)',
+                    yAxisID: 'y',
+                    tension: 0.1
+                },
+                {
+                    label: 'Clients Created',
+                    data: config.snapshots.map(s => s.clientsCreated),
+                    borderColor: '#66bb6a',
+                    backgroundColor: 'rgba(102, 187, 106, 0.1)',
+                    yAxisID: 'y1',
+                    tension: 0.1
+                },
+                {
+                    label: 'Active Clients',
+                    data: config.snapshots.map(s => s.activeClients),
+                    borderColor: '#ffa726',
+                    backgroundColor: 'rgba(255, 167, 38, 0.1)',
+                    yAxisID: 'y1',
+                    tension: 0.1
+                }
+            ]
+        });
+
+        let html = `
+            <div class="section">
+                <h2>⚙️ Client Configuration Time Plot</h2>
+                <p class="note">Showing ${config.snapshots.length} of ${config.totalSnapshots} entries. 
+                    ${config.uniqueMachines.length > 0 ? `Machines: ${config.uniqueMachines.join(', ')}` : ''}
+                    ${config.connectionModes.length > 0 ? ` | Modes: ${config.connectionModes.join(', ')}` : ''}
+                </p>
+                <div class="chart-container" style="height: 400px; position: relative;">
+                    <canvas id="${chartId}"></canvas>
+                </div>
+                <script type="application/json" id="${chartId}-data">${chartData}</script>
+                ${this.generateConfigStatsTable(config.stats, 'Client Configuration Statistics')}
+            </div>
+        `;
+
+        return html;
+    }
+
+    /**
+     * Generate statistics table for system metrics
+     */
+    generateMetricsStatsTable(stats, title) {
+        const rows = [
+            { name: 'CPU (%)', ...stats.cpu, format: v => v.toFixed(2) },
+            { name: 'Memory (MB)', ...stats.memory, format: v => v.toFixed(2) },
+            { name: 'Thread Wait (ms)', ...stats.threadWait, format: v => v.toFixed(2) },
+            { name: 'TCP Connections', ...stats.tcpConnections, format: v => Math.round(v) }
+        ];
+
+        return this.generateStatsTableHtml(rows, title);
+    }
+
+    /**
+     * Generate statistics table for client config
+     */
+    generateConfigStatsTable(stats, title) {
+        const rows = [
+            { name: 'Processor Count', ...stats.processorCount, format: v => Math.round(v) },
+            { name: 'Clients Created', ...stats.clientsCreated, format: v => Math.round(v) },
+            { name: 'Active Clients', ...stats.activeClients, format: v => Math.round(v) }
+        ];
+
+        return this.generateStatsTableHtml(rows, title);
+    }
+
+    /**
+     * Generate common stats table HTML
+     */
+    generateStatsTableHtml(rows, title) {
+        let html = `
+            <div class="table-container" style="margin-top: 20px;">
+                <div class="table-header">${this.escape(title)}</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="row-num">#</th>
+                            <th>Metric</th>
+                            <th>Min</th>
+                            <th>P50</th>
+                            <th>P75</th>
+                            <th>P90</th>
+                            <th>P95</th>
+                            <th>P99</th>
+                            <th>Max</th>
+                            <th>Avg</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        rows.forEach((row, i) => {
+            const fmt = row.format || (v => v.toFixed(2));
+            html += `
+                <tr>
+                    <td class="row-num">${i + 1}</td>
+                    <td><span class="str">${this.escape(row.name)}</span></td>
+                    <td><span class="num">${fmt(row.min)}</span></td>
+                    <td><span class="num">${fmt(row.p50)}</span></td>
+                    <td><span class="num">${fmt(row.p75)}</span></td>
+                    <td><span class="num">${fmt(row.p90)}</span></td>
+                    <td><span class="num">${fmt(row.p95)}</span></td>
+                    <td><span class="num">${fmt(row.p99)}</span></td>
+                    <td><span class="num">${fmt(row.max)}</span></td>
+                    <td><span class="num">${fmt(row.avg)}</span></td>
+                    <td><span class="num">${row.count.toLocaleString()}</span></td>
                 </tr>
             `;
         });
