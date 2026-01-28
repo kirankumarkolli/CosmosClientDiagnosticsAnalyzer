@@ -347,6 +347,9 @@ const app = {
         const el = document.getElementById(jsonId);
         if (!el) return;
 
+        // Store the trigger element for returning focus
+        this.jsonTriggerElement = el.closest('tr') || el.closest('td') || el;
+
         this.currentJsonContent = el.textContent.trim();
         this.elements.jsonContent.textContent = this.currentJsonContent;
         this.elements.jsonModal.classList.add('visible');
@@ -354,11 +357,21 @@ const app = {
     },
 
     /**
-     * Close modal
+     * Close modal and return to original position
      */
     closeModal() {
         this.elements.jsonModal.classList.remove('visible');
         document.body.style.overflow = '';
+
+        // Scroll back to the trigger element
+        if (this.jsonTriggerElement) {
+            this.jsonTriggerElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Flash the row to show where we returned
+            this.jsonTriggerElement.classList.add('copy-flash');
+            setTimeout(() => {
+                this.jsonTriggerElement.classList.remove('copy-flash');
+            }, 500);
+        }
     },
 
     /**
@@ -545,9 +558,10 @@ const app={
     closeBucket(id){const el=document.getElementById('bucket-'+id);if(el)el.classList.remove('visible')},
     showGroup(id){document.querySelectorAll('.detail-section').forEach(e=>e.classList.remove('visible'));const el=document.getElementById('group-'+id);if(el){el.classList.add('visible');el.scrollIntoView({behavior:'smooth'})}},
     closeGroup(id){const el=document.getElementById('group-'+id);if(el)el.classList.remove('visible')},
-    showJson(id){const el=document.getElementById(id);if(el){currentJson=el.textContent.trim();document.getElementById('jsonContent').textContent=currentJson;document.getElementById('jsonModal').classList.add('visible');document.body.style.overflow='hidden'}}
+    showJson(id){const el=document.getElementById(id);if(el){this.triggerEl=el.closest('tr')||el;currentJson=el.textContent.trim();document.getElementById('jsonContent').textContent=currentJson;document.getElementById('jsonModal').classList.add('visible');document.body.style.overflow='hidden'}},
+    triggerEl:null
 };
-function closeModal(){document.getElementById('jsonModal').classList.remove('visible');document.body.style.overflow=''}
+function closeModal(){document.getElementById('jsonModal').classList.remove('visible');document.body.style.overflow='';if(app.triggerEl){app.triggerEl.scrollIntoView({behavior:'smooth',block:'center'});app.triggerEl.style.background='var(--hover-row)';setTimeout(()=>app.triggerEl.style.background='',500)}}
 function copyJson(){navigator.clipboard.writeText(currentJson).then(()=>{const b=event.target;b.textContent='✓ Copied!';setTimeout(()=>b.textContent='📋 Copy',2000)})}
 function formatJson(){try{const f=JSON.stringify(JSON.parse(currentJson),null,2);currentJson=f;document.getElementById('jsonContent').textContent=f;const b=event.target;b.textContent='✓ Formatted!';setTimeout(()=>b.textContent='🔧 Format',2000)}catch(e){alert('Invalid JSON')}}
 document.addEventListener('click',e=>{const th=e.target.closest('th.sortable');if(th){const t=th.closest('table'),c=parseInt(th.dataset.col);if(t&&!isNaN(c)){const tb=t.querySelector('tbody');if(!tb)return;const r=Array.from(tb.querySelectorAll('tr')),a=th.classList.contains('asc');t.querySelectorAll('th.sortable').forEach(h=>h.classList.remove('asc','desc'));th.classList.add(a?'desc':'asc');const d=a?-1:1;r.sort((x,y)=>{const ca=x.cells[c],cb=y.cells[c];if(!ca||!cb)return 0;let va=ca.dataset.sort||ca.textContent.trim(),vb=cb.dataset.sort||cb.textContent.trim();const na=parseFloat(va),nb=parseFloat(vb);return!isNaN(na)&&!isNaN(nb)?(na-nb)*d:va.localeCompare(vb)*d});r.forEach((row,i)=>{if(row.cells[0])row.cells[0].textContent=i+1;tb.appendChild(row)})}}});

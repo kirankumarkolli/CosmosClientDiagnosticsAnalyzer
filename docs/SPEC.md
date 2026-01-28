@@ -6,6 +6,7 @@
 - **2026-01-28**: Fixed button showing "Analyzing..." on page load - CSS `[hidden]` attribute override
 - **2026-01-28**: Added repaired/failed JSON counts to Parsing Statistics summary
 - **2026-01-28**: JSON column now shows repair status (✓ Valid or 🔧 Repaired) for each entry
+- **2026-01-28**: Modal close now scrolls back to originating table row with highlight flash
 
 ---
 
@@ -142,6 +143,7 @@
 | Styles | Minified embedded CSS |
 | Scripts | Minified embedded JS |
 | Interactivity | All features work offline |
+| Modal behavior | Closing JSON modal returns focus to originating row with highlight |
 
 ---
 
