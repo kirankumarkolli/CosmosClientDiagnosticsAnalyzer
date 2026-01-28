@@ -347,17 +347,31 @@ const app = {
                 },
                 toolbox: {
                     feature: {
-                        dataZoom: { yAxisIndex: 'none', title: { zoom: 'Zoom', back: 'Reset' } },
-                        restore: { title: 'Restore' },
-                        saveAsImage: { title: 'Save', pixelRatio: 2 }
+                        dataZoom: { 
+                            yAxisIndex: 'none', 
+                            title: { zoom: 'Drag to Zoom', back: 'Reset Zoom' },
+                            brushStyle: { borderWidth: 1, color: 'rgba(79, 195, 247, 0.2)', borderColor: '#4fc3f7' }
+                        },
+                        restore: { title: 'Reset All' },
+                        saveAsImage: { title: 'Save Image', pixelRatio: 2 }
                     },
-                    right: 20
+                    right: 20,
+                    iconStyle: { borderColor: '#808080' },
+                    emphasis: { iconStyle: { borderColor: '#4fc3f7' } }
                 },
                 dataZoom: [
-                    { type: 'inside', start: 0, end: 100 },
-                    { type: 'slider', start: 0, end: 100, height: 25, bottom: 10 }
+                    { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: 'shift' },
+                    { 
+                        type: 'slider', start: 0, end: 100, height: 30, bottom: 10,
+                        borderColor: '#444', backgroundColor: '#1e1e1e',
+                        fillerColor: 'rgba(79, 195, 247, 0.2)',
+                        handleStyle: { color: '#4fc3f7', borderColor: '#4fc3f7' },
+                        textStyle: { color: '#808080' },
+                        brushSelect: true
+                    },
+                    { type: 'select' }
                 ],
-                grid: { left: 60, right: 60, top: 80, bottom: 80 },
+                grid: { left: 60, right: 60, top: 80, bottom: 90 },
                 xAxis: {
                     type: 'category',
                     data: data.timestamps,
@@ -420,6 +434,14 @@ const app = {
             };
             
             chart.setOption(option);
+            
+            // Auto-activate dataZoom tool on load
+            chart.dispatchAction({
+                type: 'takeGlobalCursor',
+                key: 'dataZoomSelect',
+                dataZoomSelectActive: true
+            });
+            
             console.log('System metrics chart setOption completed');
             this.chartInstances.push(chart);
             
@@ -467,17 +489,31 @@ const app = {
                 },
                 toolbox: {
                     feature: {
-                        dataZoom: { yAxisIndex: 'none' },
-                        restore: {},
-                        saveAsImage: { pixelRatio: 2 }
+                        dataZoom: { 
+                            yAxisIndex: 'none', 
+                            title: { zoom: 'Drag to Zoom', back: 'Reset Zoom' },
+                            brushStyle: { borderWidth: 1, color: 'rgba(79, 195, 247, 0.2)', borderColor: '#4fc3f7' }
+                        },
+                        restore: { title: 'Reset All' },
+                        saveAsImage: { title: 'Save Image', pixelRatio: 2 }
                     },
-                    right: 20
+                    right: 20,
+                    iconStyle: { borderColor: '#808080' },
+                    emphasis: { iconStyle: { borderColor: '#4fc3f7' } }
                 },
                 dataZoom: [
-                    { type: 'inside', start: 0, end: 100 },
-                    { type: 'slider', start: 0, end: 100, height: 25, bottom: 10 }
+                    { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: 'shift' },
+                    { 
+                        type: 'slider', start: 0, end: 100, height: 30, bottom: 10,
+                        borderColor: '#444', backgroundColor: '#1e1e1e',
+                        fillerColor: 'rgba(79, 195, 247, 0.2)',
+                        handleStyle: { color: '#4fc3f7', borderColor: '#4fc3f7' },
+                        textStyle: { color: '#808080' },
+                        brushSelect: true
+                    },
+                    { type: 'select' }
                 ],
-                grid: { left: 60, right: 60, top: 80, bottom: 80 },
+                grid: { left: 60, right: 60, top: 80, bottom: 90 },
                 xAxis: {
                     type: 'category',
                     data: data.timestamps,
@@ -514,6 +550,15 @@ const app = {
             };
             
             chart.setOption(option);
+            
+            // Enable brush selection to zoom
+            // Auto-activate dataZoom tool on load
+            chart.dispatchAction({
+                type: 'takeGlobalCursor',
+                key: 'dataZoomSelect',
+                dataZoomSelectActive: true
+            });
+            
             this.chartInstances.push(chart);
             setTimeout(() => chart.resize(), 100);
             window.addEventListener('resize', () => chart.resize());
