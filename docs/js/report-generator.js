@@ -729,8 +729,9 @@ class ReportGenerator {
             <div class="section">
                 <h2>📈 System Metrics Time Plot</h2>
                 <p class="note">Showing ${metrics.snapshots.length} of ${metrics.totalSnapshots} snapshots. Click legend to toggle series.</p>
-                <div class="chart-container" style="height: 400px; position: relative;">
+                <div class="chart-container" style="height: 400px; position: relative; background: var(--bg-secondary); border-radius: 6px;">
                     <canvas id="${chartId}"></canvas>
+                    <noscript>JavaScript required for charts</noscript>
                 </div>
                 <script type="application/json" id="${chartId}-data">${chartData}</script>
                 ${this.generateMetricsStatsTable(metrics.stats, 'System Metrics Statistics')}

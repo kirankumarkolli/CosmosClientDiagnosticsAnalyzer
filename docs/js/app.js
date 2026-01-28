@@ -298,13 +298,19 @@ const app = {
     initializeCharts() {
         this.destroyCharts();
         
+        console.log('Initializing charts, Chart.js available:', !!window.Chart);
+        
         // System Metrics Chart
         const systemCanvas = document.getElementById('systemMetricsChart');
+        console.log('systemMetricsChart canvas found:', !!systemCanvas);
+        
         if (systemCanvas && window.Chart) {
             const dataEl = document.getElementById('systemMetricsChart-data');
+            console.log('systemMetricsChart-data found:', !!dataEl);
             if (dataEl) {
                 try {
                     const chartData = JSON.parse(dataEl.textContent);
+                    console.log('Chart data parsed, labels count:', chartData.labels?.length);
                     const chart = new Chart(systemCanvas.getContext('2d'), {
                         type: 'line',
                         data: chartData,
@@ -316,10 +322,13 @@ const app = {
                         ])
                     });
                     this.chartInstances.push(chart);
+                    console.log('System metrics chart created successfully');
                 } catch (e) {
                     console.error('Error creating system metrics chart:', e);
                 }
             }
+        } else if (!window.Chart) {
+            console.warn('Chart.js not loaded - charts will not be displayed');
         }
 
         // Client Config Chart
