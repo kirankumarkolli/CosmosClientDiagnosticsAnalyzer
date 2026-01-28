@@ -117,11 +117,11 @@ value = sortedArray[max(0, min(index, count - 1))]
 
 | Section | Percentiles Shown |
 |---------|------------------|
-| Operation Buckets | P50, P90, P99 (columns) |
-| GroupBy ResourceType→OperationType | P50, P90 (columns) |
-| GroupBy StatusCode→SubStatusCode | P50, P90 (columns) |
-| Transport Event Groups | P50, P90 (header) |
-| Phase Breakdown | P50, P90, P99 (columns) |
+| Operation Buckets | P50, P75, P90, P95, P99 (columns) |
+| GroupBy ResourceType→OperationType | P50, P75, P90, P95, P99 (columns) |
+| GroupBy StatusCode→SubStatusCode | P50, P75, P90, P95, P99 (columns) |
+| Transport Event Groups | P50, P75, P90, P95, P99 (header) |
+| Phase Breakdown | P50, P75, P90, P95, P99 (columns) |
 
 **Computed Metrics:**
 - Per bucket: min/max duration, min/max network call count, total count, percentile P50, P75, P90, P95, P99 durations

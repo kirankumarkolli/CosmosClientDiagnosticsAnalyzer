@@ -264,7 +264,9 @@ class Analyzer {
                     min: Math.min(...durations),
                     max: Math.max(...durations),
                     p50: this.percentile(durations, 50),
+                    p75: this.percentile(durations, 75),
                     p90: this.percentile(durations, 90),
+                    p95: this.percentile(durations, 95),
                     p99: this.percentile(durations, 99),
                     entries: entries.slice(0, 50)
                 };
@@ -344,7 +346,10 @@ class Analyzer {
                     min: Math.min(...durations),
                     max: Math.max(...durations),
                     p50: this.percentile(durations, 50),
+                    p75: this.percentile(durations, 75),
                     p90: this.percentile(durations, 90),
+                    p95: this.percentile(durations, 95),
+                    p99: this.percentile(durations, 99),
                     phaseDetails,
                     entries: items.slice(0, 50)
                 };

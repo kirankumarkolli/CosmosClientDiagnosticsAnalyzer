@@ -137,9 +137,11 @@ class ReportGenerator {
                                 <th class="sortable" data-col="2">Count<span class="sort-icon">⇅</span></th>
                                 <th class="sortable" data-col="3">Min (ms)<span class="sort-icon">⇅</span></th>
                                 <th class="sortable" data-col="4">P50<span class="sort-icon">⇅</span></th>
-                                <th class="sortable" data-col="5">P90<span class="sort-icon">⇅</span></th>
-                                <th class="sortable" data-col="6">P99<span class="sort-icon">⇅</span></th>
-                                <th class="sortable" data-col="7">Max (ms)<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="5">P75<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="6">P90<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="7">P95<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="8">P99<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="9">Max (ms)<span class="sort-icon">⇅</span></th>
                                 <th>NW Calls</th>
                             </tr>
                         </thead>
@@ -155,7 +157,9 @@ class ReportGenerator {
                     <td data-sort="${bucket.count}"><span class="num">${bucket.count.toLocaleString()}</span></td>
                     <td data-sort="${bucket.min}"><span class="num">${bucket.min.toFixed(2)}</span></td>
                     <td data-sort="${bucket.p50}"><span class="num">${bucket.p50.toFixed(2)}</span></td>
+                    <td data-sort="${bucket.p75}"><span class="num">${bucket.p75.toFixed(2)}</span></td>
                     <td data-sort="${bucket.p90}"><span class="num">${bucket.p90.toFixed(2)}</span></td>
+                    <td data-sort="${bucket.p95}"><span class="num">${bucket.p95.toFixed(2)}</span></td>
                     <td data-sort="${bucket.p99}"><span class="num">${bucket.p99.toFixed(2)}</span></td>
                     <td data-sort="${bucket.max}"><span class="num">${bucket.max.toFixed(2)}</span></td>
                     <td><span class="num">${bucket.minNwCount}-${bucket.maxNwCount}</span></td>
@@ -300,8 +304,11 @@ class ReportGenerator {
                                 <th class="sortable" data-col="2">Count<span class="sort-icon">⇅</span></th>
                                 <th class="sortable" data-col="3">Min (ms)<span class="sort-icon">⇅</span></th>
                                 <th class="sortable" data-col="4">P50<span class="sort-icon">⇅</span></th>
-                                <th class="sortable" data-col="5">P90<span class="sort-icon">⇅</span></th>
-                                <th class="sortable" data-col="6">Max (ms)<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="5">P75<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="6">P90<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="7">P95<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="8">P99<span class="sort-icon">⇅</span></th>
+                                <th class="sortable" data-col="9">Max (ms)<span class="sort-icon">⇅</span></th>
                                 <th>Action</th>
                             </tr>
                         </thead>
@@ -317,7 +324,10 @@ class ReportGenerator {
                     <td data-sort="${group.count}"><span class="num">${group.count.toLocaleString()}</span></td>
                     <td data-sort="${group.min}"><span class="num">${group.min.toFixed(2)}</span></td>
                     <td data-sort="${group.p50}"><span class="num">${group.p50.toFixed(2)}</span></td>
+                    <td data-sort="${group.p75}"><span class="num">${group.p75.toFixed(2)}</span></td>
                     <td data-sort="${group.p90}"><span class="num">${group.p90.toFixed(2)}</span></td>
+                    <td data-sort="${group.p95}"><span class="num">${group.p95.toFixed(2)}</span></td>
+                    <td data-sort="${group.p99}"><span class="num">${group.p99.toFixed(2)}</span></td>
                     <td data-sort="${group.max}"><span class="num">${group.max.toFixed(2)}</span></td>
                     <td><button class="btn-view" onclick="event.stopPropagation(); app.showGroup('${groupId}')">📄 View</button></td>
                 </tr>
@@ -401,7 +411,7 @@ class ReportGenerator {
             html += `
                 <div class="subsection">
                     <div class="collapsible-header" onclick="app.toggleSection('${groupId}')">
-                        <h4>${this.escape(group.status)} (${group.count} items) - P50: ${group.p50.toFixed(2)}ms, P90: ${group.p90.toFixed(2)}ms</h4>
+                        <h4>${this.escape(group.status)} (${group.count} items) - P50: ${group.p50.toFixed(2)}ms, P75: ${group.p75.toFixed(2)}ms, P90: ${group.p90.toFixed(2)}ms, P95: ${group.p95.toFixed(2)}ms, P99: ${group.p99.toFixed(2)}ms</h4>
                         <span class="collapse-icon" id="${groupId}-icon">▶</span>
                     </div>
                     <div id="${groupId}" class="collapsible-content">
@@ -431,7 +441,9 @@ class ReportGenerator {
                             <th>Bottleneck Phase</th>
                             <th>Count</th>
                             <th>P50 (ms)</th>
+                            <th>P75 (ms)</th>
                             <th>P90 (ms)</th>
+                            <th>P95 (ms)</th>
                             <th>P99 (ms)</th>
                             <th>Endpoints</th>
                         </tr>
@@ -446,7 +458,9 @@ class ReportGenerator {
                     <td><span class="str">${this.escape(phase.phase)}</span></td>
                     <td><span class="num">${phase.count.toLocaleString()}</span></td>
                     <td><span class="num">${phase.p50.toFixed(2)}</span></td>
+                    <td><span class="num">${phase.p75.toFixed(2)}</span></td>
                     <td><span class="num">${phase.p90.toFixed(2)}</span></td>
+                    <td><span class="num">${phase.p95.toFixed(2)}</span></td>
                     <td><span class="num">${phase.p99.toFixed(2)}</span></td>
                     <td><span class="num">${phase.endpointCount}</span></td>
                 </tr>
