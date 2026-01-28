@@ -378,45 +378,67 @@ class Analyzer {
             const diagTime = diag.startTime || diag['start datetime'];
             
             for (const child of children) {
-                const systemInfo = child.data?.clientSideRequestStats?.SystemInfo ||
-                                   child.data?.['Client Side Request Stats']?.SystemInfo ||
-                                   child.data?.clientSideRequestStats?.systemInfo ||
-                                   child.data?.['Client Side Request Stats']?.systemInfo;
+                // Try multiple paths where System Info might exist
+                const systemInfoSources = [
+                    child.data?.['System Info'],
+                    child.data?.systemInfo,
+                    child.data?.SystemInfo,
+                    child.data?.clientSideRequestStats?.SystemInfo,
+                    child.data?.clientSideRequestStats?.systemInfo,
+                    child.data?.['Client Side Request Stats']?.SystemInfo,
+                    child.data?.['Client Side Request Stats']?.systemInfo,
+                    child.data?.['Client Side Request Stats']?.['System Info']
+                ];
                 
-                if (!systemInfo?.systemHistory) continue;
-                
-                for (const entry of systemInfo.systemHistory) {
-                    const snapshot = {
-                        timestamp: entry.DateUtc || entry.dateUtc || diagTime,
-                        cpu: entry.Cpu ?? entry.cpu ?? 0,
-                        memoryBytes: entry.Memory ?? entry.memory ?? 0,
-                        memoryMB: (entry.Memory ?? entry.memory ?? 0) / (1024 * 1024),
-                        threadWaitMs: entry.ThreadInfo?.ThreadWaitIntervalInMs ?? 
-                                      entry.threadInfo?.threadWaitIntervalInMs ?? 0,
-                        tcpConnections: entry.NumberOfOpenTcpConnection ?? 
-                                        entry.numberOfOpenTcpConnection ?? 0,
-                        availableThreads: entry.ThreadInfo?.AvailableThreads ?? 
-                                          entry.threadInfo?.availableThreads ?? 0,
-                        isThreadStarving: entry.ThreadInfo?.IsThreadStarving ?? 
-                                          entry.threadInfo?.isThreadStarving ?? 'N/A'
-                    };
-                    snapshots.push(snapshot);
+                for (const systemInfo of systemInfoSources) {
+                    if (!systemInfo?.systemHistory && !systemInfo?.SystemHistory) continue;
+                    
+                    const history = systemInfo.systemHistory || systemInfo.SystemHistory || [];
+                    
+                    for (const entry of history) {
+                        const snapshot = {
+                            timestamp: entry.DateUtc || entry.dateUtc || diagTime,
+                            cpu: entry.Cpu ?? entry.cpu ?? 0,
+                            memoryBytes: entry.Memory ?? entry.memory ?? 0,
+                            memoryMB: (entry.Memory ?? entry.memory ?? 0) / (1024 * 1024),
+                            threadWaitMs: entry.ThreadInfo?.ThreadWaitIntervalInMs ?? 
+                                          entry.threadInfo?.threadWaitIntervalInMs ?? 0,
+                            tcpConnections: entry.NumberOfOpenTcpConnection ?? 
+                                            entry.numberOfOpenTcpConnection ?? 0,
+                            availableThreads: entry.ThreadInfo?.AvailableThreads ?? 
+                                              entry.threadInfo?.availableThreads ?? 0,
+                            isThreadStarving: entry.ThreadInfo?.IsThreadStarving ?? 
+                                              entry.threadInfo?.isThreadStarving ?? 'N/A'
+                        };
+                        snapshots.push(snapshot);
+                    }
                 }
             }
         }
         
-        // Sort by timestamp
+        // Sort by timestamp and deduplicate by timestamp
         snapshots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
+        // Remove duplicates based on timestamp
+        const uniqueSnapshots = [];
+        const seenTimestamps = new Set();
+        for (const s of snapshots) {
+            const key = `${s.timestamp}-${s.cpu}-${s.memoryBytes}`;
+            if (!seenTimestamps.has(key)) {
+                seenTimestamps.add(key);
+                uniqueSnapshots.push(s);
+            }
+        }
+        
         // Calculate statistics for each metric
-        const cpuValues = snapshots.map(s => s.cpu).filter(v => v != null).sort((a, b) => a - b);
-        const memoryValues = snapshots.map(s => s.memoryMB).filter(v => v != null).sort((a, b) => a - b);
-        const threadWaitValues = snapshots.map(s => s.threadWaitMs).filter(v => v != null).sort((a, b) => a - b);
-        const tcpValues = snapshots.map(s => s.tcpConnections).filter(v => v != null).sort((a, b) => a - b);
+        const cpuValues = uniqueSnapshots.map(s => s.cpu).filter(v => v != null && v > 0).sort((a, b) => a - b);
+        const memoryValues = uniqueSnapshots.map(s => s.memoryMB).filter(v => v != null && v > 0).sort((a, b) => a - b);
+        const threadWaitValues = uniqueSnapshots.map(s => s.threadWaitMs).filter(v => v != null).sort((a, b) => a - b);
+        const tcpValues = uniqueSnapshots.map(s => s.tcpConnections).filter(v => v != null).sort((a, b) => a - b);
         
         return {
-            snapshots: snapshots.slice(0, 500), // Limit for performance
-            totalSnapshots: snapshots.length,
+            snapshots: uniqueSnapshots.slice(0, 500), // Limit for performance
+            totalSnapshots: uniqueSnapshots.length,
             stats: {
                 cpu: this.computeMetricStats(cpuValues),
                 memory: this.computeMetricStats(memoryValues),
