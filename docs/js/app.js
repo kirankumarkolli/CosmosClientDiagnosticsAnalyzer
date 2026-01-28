@@ -176,8 +176,21 @@ const app = {
         this.updateProgress('Reading file...', 5);
 
         try {
-            // Read file
-            const content = await this.readFile(this.selectedFile);
+            // Read file - handle Excel vs text files
+            let content;
+            const isExcel = ExcelParser.isExcelFile(this.selectedFile.name);
+            
+            if (isExcel) {
+                this.updateProgress('Reading Excel file...', 5);
+                const arrayBuffer = await this.readFileAsArrayBuffer(this.selectedFile);
+                const excelParser = new ExcelParser();
+                content = excelParser.parse(arrayBuffer, (msg, pct) => {
+                    this.updateProgress(msg, pct);
+                });
+            } else {
+                content = await this.readFile(this.selectedFile);
+            }
+            
             this.updateProgress('Parsing JSON lines...', 10);
 
             // Allow UI to update
@@ -236,6 +249,18 @@ const app = {
             reader.onload = e => resolve(e.target.result);
             reader.onerror = () => reject(new Error('Failed to read file'));
             reader.readAsText(file);
+        });
+    },
+
+    /**
+     * Read file as ArrayBuffer (for Excel files)
+     */
+    readFileAsArrayBuffer(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsArrayBuffer(file);
         });
     },
 

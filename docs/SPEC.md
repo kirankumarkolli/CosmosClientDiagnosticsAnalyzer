@@ -70,10 +70,33 @@
 | Feature | Specification |
 |---------|--------------|
 | Drag & drop | Drop zone with visual feedback |
-| File picker | Click to browse, accept `.txt`, `.json`, `.log` |
+| File picker | Click to browse |
+| **Supported formats** | `.txt`, `.json`, `.log`, `.xlsx`, `.xls`, `.xlsb`, `.csv`, `.ods` |
 | File info | Display filename and size |
 | Large file handling | Process in chunks, show progress |
 | LatencyThreshold | textbox input to accept integer type and use it to filter |
+
+**Excel File Support:**
+
+| Format | Extension | Library |
+|--------|-----------|---------|
+| Excel 2007+ | .xlsx | SheetJS |
+| Excel 97-2004 | .xls | SheetJS |
+| Excel Binary | .xlsb | SheetJS |
+| CSV/TSV | .csv | SheetJS |
+| OpenDocument | .ods | SheetJS |
+
+**Excel Parsing Behavior:**
+- Reads **first sheet** only
+- Extracts **column A** (first column)
+- Skips header row if first cell doesn't start with `{`
+- Only includes cells that look like JSON objects (start with `{`)
+- Converts extracted cells to newline-separated text for JsonParser
+
+**Limitations:**
+- Password-protected files not supported
+- Formulas read as computed values only
+- Large files (50MB+) may be slow in browser
 
 ### 2. JSON Parser Module
 
@@ -263,8 +286,11 @@ docs/
 ├── css/
 │   └── styles.css          # Application styles
 └── js/
+    ├── echarts.min.js      # ECharts library for time-series charts
+    ├── xlsx.min.js         # SheetJS library for Excel parsing
     ├── version.js          # Version info (commit hash, date)
     ├── json-parser.js      # JSON parsing and repair
+    ├── excel-parser.js     # Excel file parsing (extracts column A)
     ├── analyzer.js         # Analysis engine
     ├── report-generator.js # HTML report generation
     ├── timeline.js         # Timeline visualization for JSON modal
@@ -336,14 +362,19 @@ docs/
 |------|------|-------------|
 | `docs/index.html` | 3.9 KB | Main application page |
 | `docs/css/styles.css` | 14 KB | Dark theme styles |
+| `docs/js/echarts.min.js` | ~1 MB | ECharts library |
+| `docs/js/xlsx.min.js` | ~944 KB | SheetJS Excel library |
 | `docs/js/json-parser.js` | 6 KB | JSON parsing & repair |
+| `docs/js/excel-parser.js` | 3 KB | Excel file parsing |
 | `docs/js/analyzer.js` | 14 KB | Analysis engine |
 | `docs/js/report-generator.js` | 23 KB | HTML report generation |
+| `docs/js/timeline.js` | 8 KB | Timeline visualization |
 | `docs/js/app.js` | 24 KB | Application logic |
 
 ### Features Implemented
 
 - ✅ Drag-and-drop file upload with visual feedback
+- ✅ **Excel file support** (.xlsx, .xls, .xlsb, .csv, .ods) - extracts diagnostics from column A
 - ✅ Truncated JSON repair (10-iteration algorithm)
 - ✅ Percentile metrics (P50, P75, P90, P95, P99)
 - ✅ Operation bucketing with click-to-drill-down
@@ -353,6 +384,9 @@ docs/
 - ✅ Endpoint statistics per phase
 - ✅ Sortable tables (click headers)
 - ✅ JSON viewer modal with copy/format
+- ✅ **Timeline visualization** - Chrome-style waterfall in JSON modal
+- ✅ **System Metrics Time Plot** - Interactive ECharts with CPU, Memory, Thread Wait, TCP
+- ✅ **Client Configuration Time Plot** - Interactive ECharts with client metrics
 - ✅ Self-contained HTML export
 - ✅ Dark theme (LinqPad-inspired)
 - ✅ Responsive design
@@ -381,4 +415,9 @@ Then enable GitHub Pages: Settings → Pages → Deploy from `/docs` on `main` b
 
 ## Dependencies
 
-None - pure HTML/CSS/JavaScript implementation.
+| Library | Version | Size | Purpose |
+|---------|---------|------|---------|
+| ECharts | 5.x | ~1MB | Time-series charts (System Metrics, Client Config) |
+| SheetJS | 0.20.1 | ~944KB | Excel file parsing (.xlsx, .xls, .xlsb, .csv, .ods) |
+
+Both libraries are embedded locally (no CDN) for offline capability.
