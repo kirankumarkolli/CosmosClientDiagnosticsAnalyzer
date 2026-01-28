@@ -1,5 +1,5 @@
 const VERSION = {
-    commit: '8060f23',
+    commit: '9220c22',
     date: '2026-01-27'
 };
 window.VERSION = VERSION;

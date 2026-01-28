@@ -268,7 +268,7 @@ class Analyzer {
                     p90: this.percentile(durations, 90),
                     p95: this.percentile(durations, 95),
                     p99: this.percentile(durations, 99),
-                    entries: entries.slice(0, 50)
+                    entries: entries
                 };
             })
             .sort((a, b) => b.count - a.count);
@@ -333,7 +333,7 @@ class Analyzer {
                                 .map(([endpoint, count]) => ({ endpoint, count }))
                                 .sort((a, b) => b.count - a.count)
                                 .slice(0, 10),
-                            entries: phaseItems.slice(0, 50)
+                            entries: phaseItems
                         };
                     })
                     .sort((a, b) => b.count - a.count);
@@ -351,7 +351,7 @@ class Analyzer {
                     p95: this.percentile(durations, 95),
                     p99: this.percentile(durations, 99),
                     phaseDetails,
-                    entries: items.slice(0, 50)
+                    entries: items
                 };
             })
             .sort((a, b) => b.count - a.count);

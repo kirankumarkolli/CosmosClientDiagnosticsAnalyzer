@@ -213,7 +213,6 @@ class ReportGenerator {
     generatePercentileGroup(label, range, entries, groupId) {
         if (entries.length === 0) return '';
         
-        const displayEntries = entries.slice(0, 50);
         return `
             <div class="subsection">
                 <div class="collapsible-header" onclick="app.toggleSection('${groupId}')">
@@ -221,8 +220,7 @@ class ReportGenerator {
                     <span class="collapse-icon" id="${groupId}-icon">▶</span>
                 </div>
                 <div id="${groupId}" class="collapsible-content">
-                    ${this.generateEntriesTable(displayEntries, `table-${groupId}`)}
-                    ${entries.length > 50 ? `<p class="note">Showing 50 of ${entries.length} entries</p>` : ''}
+                    ${this.generateEntriesTable(entries, `table-${groupId}`)}
                 </div>
             </div>
         `;
