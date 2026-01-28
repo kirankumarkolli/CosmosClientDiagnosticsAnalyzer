@@ -688,7 +688,7 @@ class ReportGenerator {
     generateSystemMetricsSection(metrics) {
         const chartId = 'systemMetricsChart';
         const chartData = JSON.stringify({
-            timestamps: metrics.snapshots.map(s => s.timestamp),
+            timestamps: metrics.snapshots.map(s => this.formatTimestamp(s.timestamp)),
             cpu: metrics.snapshots.map(s => s.cpu),
             memory: metrics.snapshots.map(s => s.memoryMB),
             threadWait: metrics.snapshots.map(s => s.threadWaitMs),
@@ -714,7 +714,7 @@ class ReportGenerator {
     generateClientConfigSection(config) {
         const chartId = 'clientConfigChart';
         const chartData = JSON.stringify({
-            timestamps: config.snapshots.map(s => s.timestamp),
+            timestamps: config.snapshots.map(s => this.formatTimestamp(s.timestamp)),
             processorCount: config.snapshots.map(s => s.processorCount),
             clientsCreated: config.snapshots.map(s => s.clientsCreated),
             activeClients: config.snapshots.map(s => s.activeClients)
@@ -847,6 +847,26 @@ class ReportGenerator {
         if (bytes < 1024) return bytes + 'B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
         return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+    }
+
+    /**
+     * Format timestamp to seconds granularity (MM/DD HH:MM:SS)
+     */
+    formatTimestamp(ts) {
+        if (!ts) return '';
+        try {
+            const date = new Date(ts);
+            if (isNaN(date.getTime())) return ts;
+            // Format as MM/DD HH:MM:SS
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const mins = String(date.getMinutes()).padStart(2, '0');
+            const secs = String(date.getSeconds()).padStart(2, '0');
+            return `${month}/${day} ${hours}:${mins}:${secs}`;
+        } catch (e) {
+            return ts;
+        }
     }
 }
 
