@@ -94,13 +94,13 @@ class Analyzer {
         // Get the highest count operation for detailed analysis
         const targetOp = result.operationBuckets[0]?.name;
         if (targetOp) {
-            const targetDiags = diagnostics.filter(d => d.name === targetOp);
+            // Use highLatency (filtered entries) for multi-entry mode, all diagnostics for single entry
+            const targetDiags = highLatency.filter(d => d.name === targetOp);
             result.networkInteractions = this.extractNetworkInteractions(targetDiags);
 
-            // For single entry mode (skipLatencyFilter), include all network interactions
-            const highLatencyNw = skipLatencyFilter
-                ? result.networkInteractions
-                : result.networkInteractions.filter(n => n.durationInMs > threshold);
+            // For single entry mode, include all network interactions; for multi-entry, no additional filter needed
+            // since targetDiags already comes from highLatency entries
+            const highLatencyNw = result.networkInteractions;
             highLatencyNw.sort((a, b) => b.durationInMs - a.durationInMs);
 
             if (progressCallback) progressCallback('Computing grouped analysis...', 75);
