@@ -1,4 +1,0 @@
-<Solution>
-  <Project Path="Diagnostics.Web/Diagnostics.Web.csproj" />
-  <Project Path="Diagnostics/Diagnostics.csproj" />
-</Solution>
