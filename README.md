@@ -2,6 +2,10 @@
 
 A **100% client-side** web app that analyzes Azure Cosmos DB diagnostics logs. **Your data never leaves your browser!**
 
+## 🌐 Live Demo
+
+**Try it now:** [https://kirankumarkolli.github.io/CosmosClientDiagnosticsAnalyzer/](https://kirankumarkolli.github.io/CosmosClientDiagnosticsAnalyzer/)
+
 ## Quick Start
 
 **Run Locally:**
@@ -103,10 +107,59 @@ docs/                         <- GitHub Pages source (static files only)
     ├── report-generator.js  <- HTML report generation
     └── app.js               <- Main application logic
 
-Diagnostics.Core/            <- C# library (optional server version)
-Diagnostics.Functions/       <- Azure Functions (optional)
-Diagnostics.Web/             <- ASP.NET web API (optional)
+tests/                        <- Validation test suite
+├── run-tests.js             <- Test runner (requires puppeteer)
+└── fixtures/                <- Sample test data
+    ├── sample-diagnostics.jsonl
+    └── sample-with-exceptions.jsonl
 ```
+
+---
+
+## Running Tests
+
+The project includes a validation test suite using Puppeteer for headless browser testing.
+
+### Prerequisites
+
+Install Node.js (v18+) and Puppeteer:
+
+```bash
+npm install puppeteer
+```
+
+### Run Tests
+
+```bash
+# From repository root
+node tests/run-tests.js
+```
+
+### Expected Output
+
+```
+CosmosClientDiagnostics Analyzer - Validation Tests
+
+============================================================
+
+✅ PASS: GroupBy TransportException: truncates key at (Time: to group similar exceptions
+✅ PASS: GroupBy LastTransportEvent: shows in multi-entry mode
+✅ PASS: GroupBy LastTransportEvent: excludes network interactions from below-threshold entries
+✅ PASS: GroupBy LastTransportEvent: works with real sample diagnostics data
+
+============================================================
+
+Results: 4 passed, 0 failed, 4 total
+```
+
+### Test Coverage
+
+| Test | Description |
+|------|-------------|
+| TransportException key truncation | Verifies exception messages with `(Time:...)` suffix are grouped by message prefix |
+| LastTransportEvent multi-entry | Verifies GroupBy sections show when multiple entries are uploaded |
+| Threshold filtering | Verifies only high-latency entries (>threshold) are included in network analysis |
+| Real sample data | Verifies parsing and analysis with actual Cosmos DB diagnostics |
 
 ---
 
