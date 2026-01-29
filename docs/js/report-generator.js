@@ -817,30 +817,100 @@ class ReportGenerator {
     }
 
     /**
-     * Generate Client Configuration Time Plot section
+     * Generate Client Configuration Time Plot section - Latency by Machine scatter plot
      */
     generateClientConfigSection(config) {
         const chartId = 'clientConfigChart';
+        
+        // Prepare data for scatter plot - group by machineId
+        const seriesData = {};
+        for (const s of config.snapshots) {
+            const machineId = s.machineId || 'Unknown';
+            if (!seriesData[machineId]) {
+                seriesData[machineId] = [];
+            }
+            seriesData[machineId].push({
+                timestamp: s.timestamp,
+                duration: s.duration
+            });
+        }
+        
         const chartData = JSON.stringify({
-            timestamps: config.snapshots.map(s => this.formatTimestamp(s.timestamp)),
-            processorCount: config.snapshots.map(s => s.processorCount),
-            clientsCreated: config.snapshots.map(s => s.clientsCreated),
-            activeClients: config.snapshots.map(s => s.activeClients)
+            series: seriesData,
+            machineCounts: config.machineCounts,
+            maxCount: config.maxCount
         });
 
         let html = `
             <div class="section">
-                <h2>⚙️ Client Configuration Time Plot</h2>
-                <p class="note">Showing ${config.snapshots.length} of ${config.totalSnapshots} entries. 
-                    ${config.uniqueMachines.length > 0 ? `Machines: ${config.uniqueMachines.join(', ')}` : ''}
+                <h2>⚙️ Latency by Machine</h2>
+                <p class="note">Showing ${config.snapshots.length} of ${config.totalSnapshots} entries across ${config.uniqueMachines.length} machine(s). 
+                    Color intensity indicates relative request count.
                     ${config.connectionModes.length > 0 ? ` | Modes: ${config.connectionModes.join(', ')}` : ''}
                 </p>
                 <div id="${chartId}" class="echarts-container" style="height: 400px; background: var(--bg-secondary); border-radius: 8px;"></div>
                 <script type="application/json" id="${chartId}-data">${chartData}</script>
-                ${this.generateConfigStatsTable(config.stats, 'Client Configuration Statistics')}
+                ${this.generateMachineStatsTable(config.perMachineStats)}
             </div>
         `;
 
+        return html;
+    }
+
+    /**
+     * Generate statistics table for latency per machine
+     */
+    generateMachineStatsTable(perMachineStats) {
+        if (!perMachineStats || perMachineStats.length === 0) {
+            return '';
+        }
+
+        let html = `
+            <div class="table-container" style="margin-top: 20px;">
+                <div class="table-header">Latency Statistics by Machine</div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th class="row-num">#</th>
+                            <th>Machine ID</th>
+                            <th>Count</th>
+                            <th>Min (ms)</th>
+                            <th>P50 (ms)</th>
+                            <th>P75 (ms)</th>
+                            <th>P90 (ms)</th>
+                            <th>P95 (ms)</th>
+                            <th>P99 (ms)</th>
+                            <th>Max (ms)</th>
+                            <th>Avg (ms)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        perMachineStats.forEach((stat, i) => {
+            // Truncate machineId for display
+            const displayId = stat.machineId.length > 30 
+                ? stat.machineId.substring(0, 27) + '...' 
+                : stat.machineId;
+            
+            html += `
+                <tr>
+                    <td class="row-num">${i + 1}</td>
+                    <td title="${this.escape(stat.machineId)}"><span class="str">${this.escape(displayId)}</span></td>
+                    <td><span class="num">${stat.count.toLocaleString()}</span></td>
+                    <td><span class="num">${stat.min.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.p50.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.p75.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.p90.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.p95.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.p99.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.max.toFixed(2)}</span></td>
+                    <td><span class="num">${stat.avg.toFixed(2)}</span></td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table></div>';
         return html;
     }
 

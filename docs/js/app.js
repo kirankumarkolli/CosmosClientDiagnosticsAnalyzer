@@ -582,23 +582,61 @@ const app = {
 
         try {
             const data = JSON.parse(dataEl.textContent);
-            console.log('Client config data - timestamps:', data.timestamps?.length);
+            console.log('Client config data - series:', Object.keys(data.series || {}).length);
             
             const chart = echarts.init(container, null, { renderer: 'canvas' });
+            
+            // Generate color palette for machines based on relative count
+            const baseColors = ['#4fc3f7', '#81c784', '#ffb74d', '#ba68c8', '#f48fb1', '#80cbc4', '#ce93d8', '#a5d6a7'];
+            const machineIds = Object.keys(data.series || {});
+            
+            // Create series for each machine
+            const series = machineIds.map((machineId, idx) => {
+                const points = data.series[machineId];
+                const count = data.machineCounts[machineId] || 1;
+                const relativeCount = count / data.maxCount;
+                
+                // Color intensity based on relative count
+                const baseColor = baseColors[idx % baseColors.length];
+                const opacity = 0.3 + (relativeCount * 0.7); // 0.3 to 1.0
+                
+                return {
+                    name: machineId.length > 20 ? machineId.substring(0, 17) + '...' : machineId,
+                    type: 'scatter',
+                    data: points.map(p => [p.timestamp, p.duration]),
+                    symbolSize: 6 + (relativeCount * 6), // Size 6-12 based on count
+                    itemStyle: {
+                        color: baseColor,
+                        opacity: opacity
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowColor: baseColor
+                        }
+                    }
+                };
+            });
             
             const option = {
                 backgroundColor: 'transparent',
                 tooltip: {
-                    trigger: 'axis',
-                    axisPointer: { type: 'cross' },
+                    trigger: 'item',
                     backgroundColor: 'rgba(30, 30, 30, 0.95)',
                     borderColor: '#444',
-                    textStyle: { color: '#d4d4d4' }
+                    textStyle: { color: '#d4d4d4' },
+                    formatter: function(params) {
+                        return `<strong>${params.seriesName}</strong><br/>` +
+                               `Time: ${params.value[0]}<br/>` +
+                               `Duration: <span style="color:#4fc3f7">${params.value[1].toFixed(2)} ms</span>`;
+                    }
                 },
                 legend: {
-                    data: ['Processor Count', 'Clients Created', 'Active Clients'],
+                    type: 'scroll',
+                    data: series.map(s => s.name),
                     textStyle: { color: '#d4d4d4' },
-                    top: 10
+                    top: 10,
+                    pageTextStyle: { color: '#d4d4d4' }
                 },
                 toolbox: {
                     feature: {
@@ -623,48 +661,30 @@ const app = {
                         handleStyle: { color: '#4fc3f7', borderColor: '#4fc3f7' },
                         textStyle: { color: '#808080' },
                         brushSelect: true
-                    },
-                    { type: 'select' }
+                    }
                 ],
-                grid: { left: 60, right: 60, top: 80, bottom: 90 },
+                grid: { left: 70, right: 30, top: 80, bottom: 90 },
                 xAxis: {
                     type: 'category',
-                    data: data.timestamps,
                     axisLabel: { color: '#808080', rotate: 30, fontSize: 10 },
-                    axisLine: { lineStyle: { color: '#444' } }
+                    axisLine: { lineStyle: { color: '#444' } },
+                    name: 'Time',
+                    nameTextStyle: { color: '#808080' }
                 },
                 yAxis: {
                     type: 'value',
+                    name: 'Duration (ms)',
                     axisLabel: { color: '#808080' },
+                    nameTextStyle: { color: '#808080' },
                     splitLine: { lineStyle: { color: '#333' } }
                 },
-                series: [
-                    {
-                        name: 'Processor Count', type: 'line', data: data.processorCount,
-                        smooth: true, symbol: 'circle', symbolSize: 6,
-                        lineStyle: { width: 2, color: '#26c6da' },
-                        itemStyle: { color: '#26c6da' }
-                    },
-                    {
-                        name: 'Clients Created', type: 'line', data: data.clientsCreated,
-                        smooth: true, symbol: 'circle', symbolSize: 6,
-                        lineStyle: { width: 2, color: '#66bb6a' },
-                        itemStyle: { color: '#66bb6a' }
-                    },
-                    {
-                        name: 'Active Clients', type: 'line', data: data.activeClients,
-                        smooth: true, symbol: 'circle', symbolSize: 6,
-                        lineStyle: { width: 2, color: '#ffa726' },
-                        itemStyle: { color: '#ffa726' }
-                    }
-                ],
+                series: series,
                 animation: true,
                 animationDuration: 800
             };
             
             chart.setOption(option);
             
-            // Enable brush selection to zoom
             // Auto-activate dataZoom tool on load
             chart.dispatchAction({
                 type: 'takeGlobalCursor',
@@ -1093,25 +1113,30 @@ function initCharts(){
         }catch(e){console.error('System chart error:',e)}
     }
     
-    // Client Config Chart
+    // Client Config Chart - Latency by Machine scatter plot
     const cfgEl=document.getElementById('clientConfigChart'),cfgData=document.getElementById('clientConfigChart-data');
     if(cfgEl&&cfgData){
         try{
             const d=JSON.parse(cfgData.textContent),chart=echarts.init(cfgEl,'dark');
+            const baseColors=['#4fc3f7','#81c784','#ffb74d','#ba68c8','#f48fb1','#80cbc4','#ce93d8','#a5d6a7'];
+            const machineIds=Object.keys(d.series||{});
+            const series=machineIds.map((mid,idx)=>{
+                const pts=d.series[mid],cnt=d.machineCounts[mid]||1,rel=cnt/d.maxCount;
+                return{name:mid.length>20?mid.substring(0,17)+'...':mid,type:'scatter',
+                    data:pts.map(p=>[p.timestamp,p.duration]),symbolSize:6+(rel*6),
+                    itemStyle:{color:baseColors[idx%baseColors.length],opacity:0.3+(rel*0.7)}};
+            });
             chart.setOption({
                 backgroundColor:'transparent',
-                tooltip:{trigger:'axis',axisPointer:{type:'cross'},backgroundColor:'rgba(30,30,30,0.95)',borderColor:'#444',textStyle:{color:'#d4d4d4'}},
-                legend:{data:['Processor Count','Clients Created','Active Clients'],textStyle:{color:'#d4d4d4'},top:10},
+                tooltip:{trigger:'item',backgroundColor:'rgba(30,30,30,0.95)',borderColor:'#444',textStyle:{color:'#d4d4d4'},
+                    formatter:p=>'<strong>'+p.seriesName+'</strong><br/>Time: '+p.value[0]+'<br/>Duration: <span style="color:#4fc3f7">'+p.value[1].toFixed(2)+' ms</span>'},
+                legend:{type:'scroll',data:series.map(s=>s.name),textStyle:{color:'#d4d4d4'},top:10,pageTextStyle:{color:'#d4d4d4'}},
                 toolbox:{feature:{dataZoom:{yAxisIndex:'none'},restore:{},saveAsImage:{pixelRatio:2}},right:20},
                 dataZoom:[{type:'inside',start:0,end:100},{type:'slider',start:0,end:100,height:25,bottom:10}],
-                grid:{left:60,right:60,top:80,bottom:80},
-                xAxis:{type:'category',data:d.timestamps,axisLabel:{color:'#808080',rotate:30,fontSize:10},axisLine:{lineStyle:{color:'#444'}}},
-                yAxis:{type:'value',axisLabel:{color:'#808080'},splitLine:{lineStyle:{color:'#333'}}},
-                series:[
-                    {name:'Processor Count',type:'line',data:d.processorCount,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#26c6da'},itemStyle:{color:'#26c6da'}},
-                    {name:'Clients Created',type:'line',data:d.clientsCreated,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#66bb6a'},itemStyle:{color:'#66bb6a'}},
-                    {name:'Active Clients',type:'line',data:d.activeClients,smooth:true,symbol:'circle',symbolSize:6,lineStyle:{width:2,color:'#ffa726'},itemStyle:{color:'#ffa726'}}
-                ],animation:true,animationDuration:800
+                grid:{left:70,right:30,top:80,bottom:80},
+                xAxis:{type:'category',axisLabel:{color:'#808080',rotate:30,fontSize:10},axisLine:{lineStyle:{color:'#444'}},name:'Time',nameTextStyle:{color:'#808080'}},
+                yAxis:{type:'value',name:'Duration (ms)',axisLabel:{color:'#808080'},nameTextStyle:{color:'#808080'},splitLine:{lineStyle:{color:'#333'}}},
+                series:series,animation:true,animationDuration:800
             });
             window.addEventListener('resize',()=>chart.resize());
         }catch(e){console.error('Config chart error:',e)}

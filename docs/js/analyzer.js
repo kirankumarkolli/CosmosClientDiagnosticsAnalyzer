@@ -469,49 +469,73 @@ class Analyzer {
     /**
      * Extract client configuration metrics from all diagnostics entries
      * @param {Array} diagnostics - Parsed diagnostics objects
-     * @returns {Object} Client config with snapshots and statistics
+     * @returns {Object} Client config with latency by machine for scatter plot
      */
     extractClientConfig(diagnostics) {
         const snapshots = [];
+        const machineStats = new Map(); // machineId -> array of durations
         
         for (const diag of diagnostics) {
             const config = diag.data?.['Client Configuration'] || 
                            diag.data?.clientConfiguration ||
                            diag.data?.ClientConfiguration;
             
-            if (!config) continue;
+            const machineId = config?.MachineId ?? config?.machineId ?? 'Unknown';
+            const duration = diag.duration ?? diag['duration in milliseconds'] ?? 0;
+            const timestamp = diag.startTime ?? diag['start datetime'];
+            
+            if (!timestamp) continue;
             
             const snapshot = {
-                timestamp: diag.startTime || diag['start datetime'],
-                processorCount: config.ProcessorCount ?? config.processorCount ?? 0,
-                clientsCreated: config.NumberOfClientsCreated ?? config.numberOfClientsCreated ?? 0,
-                activeClients: config.NumberOfActiveClients ?? config.numberOfActiveClients ?? 0,
-                machineId: config.MachineId ?? config.machineId ?? '',
-                connectionMode: config.ConnectionMode ?? config.connectionMode ?? '',
-                userAgent: config.UserAgent ?? config.userAgent ?? ''
+                timestamp: timestamp,
+                duration: duration,
+                machineId: machineId,
+                connectionMode: config?.ConnectionMode ?? config?.connectionMode ?? ''
             };
             snapshots.push(snapshot);
+            
+            // Track durations per machine for stats
+            if (!machineStats.has(machineId)) {
+                machineStats.set(machineId, []);
+            }
+            machineStats.get(machineId).push(duration);
         }
         
         // Sort by timestamp
         snapshots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
-        // Calculate statistics
-        const processorValues = snapshots.map(s => s.processorCount).filter(v => v != null).sort((a, b) => a - b);
-        const createdValues = snapshots.map(s => s.clientsCreated).filter(v => v != null).sort((a, b) => a - b);
-        const activeValues = snapshots.map(s => s.activeClients).filter(v => v != null).sort((a, b) => a - b);
+        // Calculate count per machine for color intensity
+        const machineCounts = new Map();
+        for (const [machineId, durations] of machineStats) {
+            machineCounts.set(machineId, durations.length);
+        }
+        const maxCount = Math.max(...machineCounts.values(), 1);
+        
+        // Calculate per-machine statistics
+        const perMachineStats = [];
+        for (const [machineId, durations] of machineStats) {
+            const sorted = durations.sort((a, b) => a - b);
+            perMachineStats.push({
+                machineId: machineId,
+                count: durations.length,
+                relativeCount: durations.length / maxCount, // 0-1 for color intensity
+                ...this.computeMetricStats(sorted)
+            });
+        }
+        perMachineStats.sort((a, b) => b.count - a.count); // Sort by count descending
+        
+        // Get unique machines and modes
+        const uniqueMachines = [...new Set(snapshots.map(s => s.machineId).filter(Boolean))];
+        const connectionModes = [...new Set(snapshots.map(s => s.connectionMode).filter(Boolean))];
         
         return {
-            snapshots: snapshots.slice(0, 500), // Limit for performance
+            snapshots: snapshots.slice(0, 1000), // Limit for performance
             totalSnapshots: snapshots.length,
-            stats: {
-                processorCount: this.computeMetricStats(processorValues),
-                clientsCreated: this.computeMetricStats(createdValues),
-                activeClients: this.computeMetricStats(activeValues)
-            },
-            // Also store unique values for display
-            uniqueMachines: [...new Set(snapshots.map(s => s.machineId).filter(Boolean))],
-            connectionModes: [...new Set(snapshots.map(s => s.connectionMode).filter(Boolean))]
+            perMachineStats: perMachineStats,
+            machineCounts: Object.fromEntries(machineCounts),
+            maxCount: maxCount,
+            uniqueMachines: uniqueMachines,
+            connectionModes: connectionModes
         };
     }
 
