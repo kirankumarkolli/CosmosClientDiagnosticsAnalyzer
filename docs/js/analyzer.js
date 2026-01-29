@@ -122,10 +122,14 @@ class Analyzer {
             // Group by transport event
             result.transportEventGroups = this.computeTransportEventGroups(highLatencyNw);
             
-            // Group by transport exception
+            // Group by transport exception (truncate at "(Time:" to group similar exceptions)
             result.transportExceptionGroups = this.groupBy(
                 highLatencyNw.filter(n => n.transportException),
-                n => n.transportException || 'None'
+                n => {
+                    const exception = n.transportException || 'None';
+                    const timeIndex = exception.indexOf('(Time:');
+                    return timeIndex !== -1 ? exception.substring(0, timeIndex).trim() : exception;
+                }
             );
         }
 

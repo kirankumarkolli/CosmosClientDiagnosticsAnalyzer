@@ -194,7 +194,7 @@ value = sortedArray[max(0, min(index, count - 1))]
 | GroupBy ResourceType→OperationType | Sortable table, click row to expand entries |
 | GroupBy StatusCode→SubStatusCode | Sortable table, click row to expand entries |
 | GroupBy LastTransportEvent | Sortable table, click row to expand phase breakdown with percentile drill-down and endpoint stats |
-| **GroupBy TransportException** | Sortable table showing exceptions grouped by message |
+| **GroupBy TransportException** | Sortable table showing exceptions grouped by message. Key is truncated at `(Time:` to group similar exceptions together (removes timestamp suffix). |
 
 **Single Entry Mode:**
 
@@ -451,6 +451,38 @@ git push origin main
 ```
 
 Then enable GitHub Pages: Settings → Pages → Deploy from `/docs` on `main` branch.
+
+---
+
+## Validation Test Cases
+
+### GroupBy TransportException Key Truncation
+
+The TransportException grouping key is truncated at `(Time:` to group similar exceptions together.
+
+**Test Input:**
+```javascript
+[
+    { transportException: 'Connection timeout occurred (Time: 2026-01-29T10:00:00Z)', durationInMs: 1000 },
+    { transportException: 'Connection timeout occurred (Time: 2026-01-29T10:01:00Z)', durationInMs: 1500 },
+    { transportException: 'Connection timeout occurred (Time: 2026-01-29T10:02:00Z)', durationInMs: 2000 },
+    { transportException: 'Socket closed unexpectedly (Time: 2026-01-29T10:00:00Z)', durationInMs: 500 },
+    { transportException: 'Socket closed unexpectedly (Time: 2026-01-29T10:05:00Z)', durationInMs: 600 },
+    { transportException: 'No timestamp in this exception message', durationInMs: 300 }
+]
+```
+
+**Expected Output:**
+| Group Key | Count |
+|-----------|-------|
+| `Connection timeout occurred` | 3 |
+| `Socket closed unexpectedly` | 2 |
+| `No timestamp in this exception message` | 1 |
+
+**Validation:**
+- ✅ Exceptions with identical messages but different `(Time:...)` suffixes are grouped together
+- ✅ Exceptions without `(Time:` suffix retain their original key unchanged
+- ✅ Total groups = 3 (not 6)
 
 ---
 
