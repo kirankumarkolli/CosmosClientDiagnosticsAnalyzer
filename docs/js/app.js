@@ -20,6 +20,9 @@ const app = {
             dropArea: document.getElementById('dropArea'),
             fileInput: document.getElementById('fileInput'),
             fileInfo: document.getElementById('fileInfo'),
+            textInput: document.getElementById('textInput'),
+            clearTextBtn: document.getElementById('clearTextBtn'),
+            lineCounter: document.getElementById('lineCounter'),
             analyzeBtn: document.getElementById('analyzeBtn'),
             latencyThreshold: document.getElementById('latencyThreshold'),
             uploadSection: document.getElementById('upload-section'),
@@ -59,7 +62,7 @@ const app = {
      * Setup all event listeners
      */
     setupEventListeners() {
-        const { dropArea, fileInput, analyzeBtn, downloadBtn, newAnalysisBtn, retryBtn,
+        const { dropArea, fileInput, textInput, clearTextBtn, analyzeBtn, downloadBtn, newAnalysisBtn, retryBtn,
                 modalClose, copyJsonBtn, formatJsonBtn, timelineBtn, jsonModal } = this.elements;
 
         // File input
@@ -68,6 +71,10 @@ const app = {
         dropArea.addEventListener('dragleave', e => this.handleDragLeave(e));
         dropArea.addEventListener('drop', e => this.handleDrop(e));
         fileInput.addEventListener('change', e => this.handleFileSelect(e));
+
+        // Text input
+        textInput.addEventListener('input', () => this.handleTextInput());
+        clearTextBtn.addEventListener('click', () => this.clearTextInput());
 
         // Buttons
         analyzeBtn.addEventListener('click', () => this.analyze());
@@ -147,6 +154,47 @@ const app = {
         this.elements.fileInfo.textContent = `📄 ${file.name} (${this.formatSize(file.size)})`;
         this.elements.fileInfo.classList.add('visible');
         this.elements.analyzeBtn.disabled = false;
+        
+        // Clear text input when file is selected
+        this.clearTextInput();
+    },
+
+    /**
+     * Handle text input changes
+     */
+    handleTextInput() {
+        const text = this.elements.textInput.value;
+        const lines = text.split('\n').filter(line => line.trim()).length;
+        
+        this.elements.lineCounter.textContent = `Lines: ${lines}`;
+        this.elements.clearTextBtn.disabled = !text;
+        this.elements.textInput.classList.toggle('has-content', !!text.trim());
+        
+        // Enable analyze if text has content
+        if (text.trim()) {
+            this.elements.analyzeBtn.disabled = false;
+            // Clear file selection when text is entered
+            this.selectedFile = null;
+            this.elements.fileInfo.classList.remove('visible');
+            this.elements.fileInput.value = '';
+        } else if (!this.selectedFile) {
+            this.elements.analyzeBtn.disabled = true;
+        }
+    },
+
+    /**
+     * Clear text input
+     */
+    clearTextInput() {
+        this.elements.textInput.value = '';
+        this.elements.textInput.classList.remove('has-content');
+        this.elements.lineCounter.textContent = 'Lines: 0';
+        this.elements.clearTextBtn.disabled = true;
+        
+        // Only disable analyze if no file selected
+        if (!this.selectedFile) {
+            this.elements.analyzeBtn.disabled = true;
+        }
     },
 
     /**
@@ -162,7 +210,10 @@ const app = {
      * Main analysis function
      */
     async analyze() {
-        if (!this.selectedFile) return;
+        const textContent = this.elements.textInput.value.trim();
+        
+        // Check if we have either file or text input
+        if (!this.selectedFile && !textContent) return;
 
         const { analyzeBtn } = this.elements;
         const btnText = analyzeBtn.querySelector('.btn-text');
@@ -173,22 +224,29 @@ const app = {
         btnLoading.hidden = false;
         analyzeBtn.disabled = true;
         this.showSection('progress');
-        this.updateProgress('Reading file...', 5);
+        this.updateProgress('Reading input...', 5);
 
         try {
-            // Read file - handle Excel vs text files
             let content;
-            const isExcel = ExcelParser.isExcelFile(this.selectedFile.name);
             
-            if (isExcel) {
-                this.updateProgress('Reading Excel file...', 5);
-                const arrayBuffer = await this.readFileAsArrayBuffer(this.selectedFile);
-                const excelParser = new ExcelParser();
-                content = excelParser.parse(arrayBuffer, (msg, pct) => {
-                    this.updateProgress(msg, pct);
-                });
-            } else {
-                content = await this.readFile(this.selectedFile);
+            // Use text input if available, otherwise use file
+            if (textContent) {
+                content = textContent;
+                this.updateProgress('Processing pasted text...', 10);
+            } else if (this.selectedFile) {
+                // Read file - handle Excel vs text files
+                const isExcel = ExcelParser.isExcelFile(this.selectedFile.name);
+                
+                if (isExcel) {
+                    this.updateProgress('Reading Excel file...', 5);
+                    const arrayBuffer = await this.readFileAsArrayBuffer(this.selectedFile);
+                    const excelParser = new ExcelParser();
+                    content = excelParser.parse(arrayBuffer, (msg, pct) => {
+                        this.updateProgress(msg, pct);
+                    });
+                } else {
+                    content = await this.readFile(this.selectedFile);
+                }
             }
             
             this.updateProgress('Parsing JSON lines...', 10);
@@ -211,12 +269,18 @@ const app = {
             const analyzer = new Analyzer();
             this.currentResult = analyzer.analyze(diagnostics, threshold, (msg, pct) => {
                 this.updateProgress(msg, pct);
-            });
+            }, stats.isSingleEntry);
 
             // Add parser stats to result
             this.currentResult.parsedEntries = diagnostics.length;
             this.currentResult.repairedEntries = stats.repaired;
             this.currentResult.failedEntries = stats.failed;
+            this.currentResult.isSingleEntry = stats.isSingleEntry;
+            
+            // Store raw JSON for single entry view
+            if (stats.isSingleEntry && diagnostics.length === 1) {
+                this.currentResult.singleEntryRawJson = diagnostics[0]._rawJson || '';
+            }
 
             // Generate report
             this.updateProgress('Generating report...', 95);
@@ -227,6 +291,12 @@ const app = {
 
             // Display
             this.elements.resultsContainer.innerHTML = html;
+            
+            // Initialize single entry view if needed
+            if (generator.pendingSingleEntryInit) {
+                generator.initSingleEntryView(generator.pendingSingleEntryInit);
+            }
+            
             this.initializeCharts();
             this.showSection('results');
 
@@ -307,6 +377,7 @@ const app = {
         this.elements.fileInput.value = '';
         this.elements.fileInfo.textContent = '';
         this.elements.fileInfo.classList.remove('visible');
+        this.clearTextInput();
         this.elements.analyzeBtn.disabled = true;
         this.elements.progressFill.style.width = '0%';
         this.elements.resultsContainer.innerHTML = '';
@@ -783,6 +854,52 @@ const app = {
             setTimeout(() => btn.textContent = original, 2000);
         } catch (e) {
             alert('Invalid JSON - cannot format');
+        }
+    },
+
+    /**
+     * Copy single JSON (inline viewer)
+     */
+    async copySingleJson(jsonId) {
+        const el = document.getElementById(jsonId);
+        if (!el) return;
+        try {
+            await navigator.clipboard.writeText(el.textContent.trim());
+            const btn = event.target;
+            const original = btn.textContent;
+            btn.textContent = '✓ Copied!';
+            setTimeout(() => btn.textContent = original, 2000);
+        } catch (e) {
+            alert('Failed to copy to clipboard');
+        }
+    },
+
+    /**
+     * Format single JSON (inline viewer)
+     */
+    formatSingleJson(jsonId) {
+        const el = document.getElementById(jsonId);
+        const displayEl = document.getElementById(`${jsonId}-content`);
+        if (!el || !displayEl) return;
+        try {
+            const parsed = JSON.parse(el.textContent.trim());
+            const formatted = JSON.stringify(parsed, null, 2);
+            displayEl.textContent = formatted;
+            const btn = event.target;
+            const original = btn.textContent;
+            btn.textContent = '✓ Formatted!';
+            setTimeout(() => btn.textContent = original, 2000);
+        } catch (e) {
+            alert('Invalid JSON - cannot format');
+        }
+    },
+
+    /**
+     * Toggle single timeline (inline viewer)
+     */
+    toggleSingleTimeline(jsonId) {
+        if (typeof Timeline !== 'undefined') {
+            Timeline.toggleForElement(jsonId);
         }
     },
 

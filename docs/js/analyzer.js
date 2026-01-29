@@ -9,9 +9,10 @@ class Analyzer {
      * @param {Array} diagnostics - Parsed diagnostics objects
      * @param {number} threshold - Latency threshold in ms
      * @param {function} progressCallback - Progress callback
+     * @param {boolean} skipLatencyFilter - Skip latency filtering (for single entry)
      * @returns {Object} Analysis result
      */
-    analyze(diagnostics, threshold = 600, progressCallback = null) {
+    analyze(diagnostics, threshold = 600, progressCallback = null, skipLatencyFilter = false) {
         const result = {
             totalEntries: diagnostics.length,
             threshold: threshold,
@@ -21,6 +22,7 @@ class Analyzer {
             resourceTypeGroups: [],
             statusCodeGroups: [],
             transportEventGroups: [],
+            transportExceptionGroups: [],
             allHighLatencyDiagnostics: [],
             systemMetrics: null,
             clientConfig: null
@@ -34,8 +36,10 @@ class Analyzer {
 
         if (progressCallback) progressCallback('Filtering high latency entries...', 45);
 
-        // Filter high latency entries
-        const highLatency = diagnostics.filter(d => (d.duration || 0) > threshold);
+        // Filter high latency entries (skip filter for single entry mode)
+        const highLatency = skipLatencyFilter 
+            ? diagnostics 
+            : diagnostics.filter(d => (d.duration || 0) > threshold);
         result.highLatencyEntries = highLatency.length;
 
         if (progressCallback) progressCallback('Building operation buckets...', 50);
@@ -93,9 +97,11 @@ class Analyzer {
             const targetDiags = diagnostics.filter(d => d.name === targetOp);
             result.networkInteractions = this.extractNetworkInteractions(targetDiags);
 
-            const highLatencyNw = result.networkInteractions
-                .filter(n => n.durationInMs > threshold)
-                .sort((a, b) => b.durationInMs - a.durationInMs);
+            // For single entry mode (skipLatencyFilter), include all network interactions
+            const highLatencyNw = skipLatencyFilter
+                ? result.networkInteractions
+                : result.networkInteractions.filter(n => n.durationInMs > threshold);
+            highLatencyNw.sort((a, b) => b.durationInMs - a.durationInMs);
 
             if (progressCallback) progressCallback('Computing grouped analysis...', 75);
 
@@ -115,6 +121,12 @@ class Analyzer {
 
             // Group by transport event
             result.transportEventGroups = this.computeTransportEventGroups(highLatencyNw);
+            
+            // Group by transport exception
+            result.transportExceptionGroups = this.groupBy(
+                highLatencyNw.filter(n => n.transportException),
+                n => n.transportException || 'None'
+            );
         }
 
         if (progressCallback) progressCallback('Complete!', 100);
@@ -163,6 +175,7 @@ class Analyzer {
                     if (!physicalAddress) continue;
 
                     const timeline = storeResult.transportRequestTimeline;
+                    const transportException = storeResult.transportException || storeResult.TransportException;
                     
                     interactions.push({
                         resourceType: stat.resourceType || stat.ResourceType,
@@ -175,6 +188,7 @@ class Analyzer {
                         lastEvent: this.getLastEvent(timeline),
                         bottleneckEvent: this.getBottleneckEvent(timeline),
                         timelineEvents: this.extractTimelineEvents(timeline),
+                        transportException: transportException ? (transportException.message || transportException.Message || JSON.stringify(transportException)) : null,
                         rawJson: diag._rawJson
                     });
                 }

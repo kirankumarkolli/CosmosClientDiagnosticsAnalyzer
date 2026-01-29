@@ -16,15 +16,21 @@ class ReportGenerator {
     generate(result) {
         let html = '';
 
+        // Single entry mode: just show Timeline and JSON
+        if (result.isSingleEntry) {
+            html += this.generateSingleEntryView(result);
+            return html;
+        }
+
         // Summary section
         html += this.generateSummary(result);
 
-        // System Metrics Time Plot (new)
+        // System Metrics Time Plot
         if (result.systemMetrics && result.systemMetrics.snapshots.length > 0) {
             html += this.generateSystemMetricsSection(result.systemMetrics);
         }
 
-        // Client Configuration Time Plot (new)
+        // Client Configuration Time Plot
         if (result.clientConfig && result.clientConfig.snapshots.length > 0) {
             html += this.generateClientConfigSection(result.clientConfig);
         }
@@ -61,8 +67,70 @@ class ReportGenerator {
         if (result.transportEventGroups.length > 0) {
             html += this.generateTransportEventSection(result.transportEventGroups);
         }
+        
+        // Transport exception groups
+        if (result.transportExceptionGroups && result.transportExceptionGroups.length > 0) {
+            html += this.generateGroupSection(
+                '⚠️ GroupBy TransportException',
+                result.transportExceptionGroups,
+                'transportException'
+            );
+        }
 
         return html;
+    }
+
+    /**
+     * Generate single entry view with Timeline only
+     */
+    generateSingleEntryView(result) {
+        const jsonId = `json-single-${++this.jsonIdCounter}`;
+        const rawJson = result.singleEntryRawJson || '';
+        const safeJson = rawJson.replace(/<\/script>/gi, '<\\/script>');
+        
+        // Store the jsonId for later initialization
+        this.pendingSingleEntryInit = jsonId;
+        
+        let html = `
+            <div class="section">
+                <div id="${jsonId}-timeline-container" style="margin-bottom: 20px; background: var(--bg-secondary); border-radius: 8px; padding: 15px;"></div>
+                <script type="application/json" id="${jsonId}">${safeJson}</script>
+            </div>
+        `;
+        
+        // Add GroupBy sections for single entry
+        if (result.statusCodeGroups && result.statusCodeGroups.length > 0) {
+            html += this.generateGroupSection(
+                '🔢 GroupBy {StatusCode → SubStatusCode}',
+                result.statusCodeGroups,
+                'statusCode'
+            );
+        }
+        
+        if (result.transportEventGroups && result.transportEventGroups.length > 0) {
+            html += this.generateTransportEventSection(result.transportEventGroups);
+        }
+        
+        if (result.transportExceptionGroups && result.transportExceptionGroups.length > 0) {
+            html += this.generateGroupSection(
+                '⚠️ GroupBy TransportException',
+                result.transportExceptionGroups,
+                'transportException'
+            );
+        }
+        
+        return html;
+    }
+
+    /**
+     * Initialize single entry view (called after HTML is inserted)
+     */
+    initSingleEntryView(jsonId) {
+        const jsonEl = document.getElementById(jsonId);
+        
+        if (jsonEl && typeof Timeline !== 'undefined') {
+            Timeline.showForElement(jsonId);
+        }
     }
 
     /**

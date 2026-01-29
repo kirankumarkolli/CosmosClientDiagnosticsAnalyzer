@@ -90,6 +90,11 @@ const Timeline = (function() {
 
     function truncateEndpoint(endpoint) {
         if (!endpoint) return '';
+        // Show only the part after /Replica/
+        const replicaIdx = endpoint.indexOf('/Replica/');
+        if (replicaIdx !== -1) {
+            return endpoint.slice(replicaIdx + 9); // +9 to skip "/Replica/"
+        }
         try {
             const path = new URL(endpoint).pathname;
             return path.length > 28 ? '...' + path.slice(-25) : path;
@@ -113,6 +118,15 @@ const Timeline = (function() {
         return ms.toFixed(1) + 'ms';
     }
 
+    function formatTime(timestamp) {
+        const d = new Date(timestamp);
+        const h = d.getHours().toString().padStart(2, '0');
+        const m = d.getMinutes().toString().padStart(2, '0');
+        const s = d.getSeconds().toString().padStart(2, '0');
+        const ms = d.getMilliseconds().toString().padStart(3, '0');
+        return `${h}:${m}:${s}.${ms}`;
+    }
+
     function escapeHtml(str) {
         if (!str) return '';
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -130,7 +144,8 @@ const Timeline = (function() {
     function renderAxis() {
         let html = '';
         for (let i = 0; i <= 8; i++) {
-            html += `<span>${formatMs(i * totalDuration / 8)}</span>`;
+            const timestamp = minTime + (i * totalDuration / 8);
+            html += `<span>${formatTime(timestamp)}</span>`;
         }
         return html;
     }
@@ -158,6 +173,7 @@ const Timeline = (function() {
 
             html += `<div class="timeline-row" data-idx="${idx}">
                 <div class="timeline-label">
+                    <span class="timeline-time">${formatTime(req.startTime)}</span>
                     <span class="timeline-status ${statusClass}">${escapeHtml(req.statusCode)}</span>
                     <span title="${escapeHtml(req.fullEndpoint)}">${escapeHtml(req.endpoint)}</span>
                 </div>
@@ -311,6 +327,117 @@ const Timeline = (function() {
 
         hasData() {
             return timelineData.length > 0;
+        },
+
+        // Element-specific methods for inline JSON viewer
+        initForElement(jsonId, jsonStr) {
+            const data = extractTimelineData(jsonStr);
+            return data.length > 0;
+        },
+
+        toggleForElement(jsonId) {
+            const container = document.getElementById(`${jsonId}-timeline-container`);
+            const btn = document.getElementById(`${jsonId}-timeline-btn`);
+            const jsonContent = document.getElementById(`${jsonId}-content`);
+            const jsonEl = document.getElementById(jsonId);
+            if (!container || !btn || !jsonEl) return;
+
+            const isCurrentlyVisible = container.classList.contains('visible');
+            
+            if (!isCurrentlyVisible) {
+                // Extract and render timeline
+                const data = extractTimelineData(jsonEl.textContent.trim());
+                if (data.length === 0) {
+                    container.innerHTML = `
+                        <div class="timeline-header">
+                            <h4 class="timeline-title">Transport Request Timeline</h4>
+                        </div>
+                        <div class="timeline-no-data">No transport timeline data found in this JSON</div>`;
+                    container.classList.add('visible');
+                    btn.textContent = '📄 Show JSON';
+                    if (jsonContent) jsonContent.style.display = 'none';
+                    return;
+                }
+
+                // Use module-level state for rendering
+                timelineData = data;
+                timelineZoom = 1;
+                calculateTimeRange();
+                
+                const avg = timelineData.reduce((s, r) => s + r.duration, 0) / timelineData.length;
+                container.innerHTML = `
+                    <div class="timeline-header">
+                        <div>
+                            <h4 class="timeline-title">Transport Request Timeline</h4>
+                            <div class="timeline-stats">${timelineData.length} request(s) • Span: ${formatMs(totalDuration)} • Avg: ${formatMs(avg)}</div>
+                        </div>
+                        <div class="timeline-controls">
+                            <button class="timeline-zoom-btn" onclick="Timeline.zoom(-1)">➖</button>
+                            <button class="timeline-zoom-btn" onclick="Timeline.zoom(1)">➕</button>
+                            <button class="timeline-zoom-btn" onclick="Timeline.resetZoom()">⟲</button>
+                        </div>
+                    </div>
+                    <div class="timeline-legend">${renderLegend()}</div>
+                    <div class="timeline-chart">
+                        <div class="timeline-axis">${renderAxis()}</div>
+                        <div class="timeline-rows">${renderRows()}</div>
+                    </div>`;
+                
+                container.classList.add('visible');
+                btn.textContent = '📄 Show JSON';
+                if (jsonContent) jsonContent.style.display = 'none';
+            } else {
+                container.classList.remove('visible');
+                container.innerHTML = '';
+                btn.textContent = '📊 Show Timeline';
+                if (jsonContent) jsonContent.style.display = 'block';
+            }
+        },
+
+        // Show timeline immediately for element (used on initial load)
+        showForElement(jsonId) {
+            const container = document.getElementById(`${jsonId}-timeline-container`);
+            const jsonEl = document.getElementById(jsonId);
+            if (!container || !jsonEl) return;
+
+            // Extract and render timeline
+            const jsonText = jsonEl.textContent.trim();
+            const data = extractTimelineData(jsonText);
+            if (data.length === 0) {
+                container.innerHTML = `
+                    <div class="timeline-header">
+                        <h4 class="timeline-title">📊 Transport Request Timeline</h4>
+                    </div>
+                    <div class="timeline-no-data">No transport timeline data found in this JSON</div>`;
+                container.classList.add('visible');
+                return;
+            }
+
+            // Use module-level state for rendering
+            timelineData = data;
+            timelineZoom = 1;
+            calculateTimeRange();
+            
+            const avg = timelineData.reduce((s, r) => s + r.duration, 0) / timelineData.length;
+            container.innerHTML = `
+                <div class="timeline-header">
+                    <div>
+                        <h4 class="timeline-title">📊 Transport Request Timeline</h4>
+                        <div class="timeline-stats">${timelineData.length} request(s) • Span: ${formatMs(totalDuration)} • Avg: ${formatMs(avg)}</div>
+                    </div>
+                    <div class="timeline-controls">
+                        <button class="timeline-zoom-btn" onclick="Timeline.zoom(-1)">➖</button>
+                        <button class="timeline-zoom-btn" onclick="Timeline.zoom(1)">➕</button>
+                        <button class="timeline-zoom-btn" onclick="Timeline.resetZoom()">⟲</button>
+                    </div>
+                </div>
+                <div class="timeline-legend">${renderLegend()}</div>
+                <div class="timeline-chart">
+                    <div class="timeline-axis">${renderAxis()}</div>
+                    <div class="timeline-rows">${renderRows()}</div>
+                </div>`;
+            
+            container.classList.add('visible');
         }
     };
 })();

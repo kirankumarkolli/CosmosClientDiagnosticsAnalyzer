@@ -7,19 +7,61 @@ class JsonParser {
     constructor() {
         this.repairedCount = 0;
         this.failedCount = 0;
+        this.isSingleEntry = false;
     }
 
     /**
-     * Parse content with one JSON object per line
+     * Parse content - supports both single multi-line JSON and JSONL format
      * @param {string} content - File content
      * @param {function} progressCallback - Progress callback (message, percent)
      * @returns {Array} Parsed diagnostics objects
      */
     parseLines(content, progressCallback = null) {
-        const lines = content.split('\n').filter(line => line.trim());
-        const results = [];
         this.repairedCount = 0;
         this.failedCount = 0;
+        this.isSingleEntry = false;
+        
+        const trimmed = content.trim();
+        
+        // First, try to parse as a single JSON object (handles pretty-printed JSON)
+        if (trimmed.startsWith('{')) {
+            try {
+                const parsed = this.normalizeKeys(JSON.parse(trimmed));
+                if (progressCallback) {
+                    progressCallback('Parsed single JSON entry', 40);
+                }
+                parsed._rawJson = trimmed;
+                parsed._lineNumber = 1;
+                this.isSingleEntry = true;
+                return [parsed];
+            } catch (e) {
+                // Not valid single JSON, try line-by-line
+            }
+        }
+        
+        // Try to parse as JSON array
+        if (trimmed.startsWith('[')) {
+            try {
+                const arr = JSON.parse(trimmed);
+                if (Array.isArray(arr)) {
+                    if (progressCallback) {
+                        progressCallback(`Parsed JSON array with ${arr.length} entries`, 40);
+                    }
+                    return arr.map((item, i) => {
+                        const normalized = this.normalizeKeys(item);
+                        normalized._rawJson = JSON.stringify(item);
+                        normalized._lineNumber = i + 1;
+                        return normalized;
+                    });
+                }
+            } catch (e) {
+                // Not valid array, try line-by-line
+            }
+        }
+        
+        // Fall back to line-by-line parsing (JSONL format)
+        const lines = content.split('\n').filter(line => line.trim());
+        const results = [];
 
         for (let i = 0; i < lines.length; i++) {
             if (progressCallback && i % 100 === 0) {
@@ -194,7 +236,8 @@ class JsonParser {
     getStats() {
         return {
             repaired: this.repairedCount,
-            failed: this.failedCount
+            failed: this.failedCount,
+            isSingleEntry: this.isSingleEntry
         };
     }
 }
