@@ -469,11 +469,10 @@ class Analyzer {
     /**
      * Extract client configuration metrics from all diagnostics entries
      * @param {Array} diagnostics - Parsed diagnostics objects
-     * @returns {Object} Client config with latency by machine for scatter plot
+     * @returns {Object} Client config with heatmap data and raw snapshots for filtering
      */
     extractClientConfig(diagnostics) {
         const snapshots = [];
-        const machineStats = new Map(); // machineId -> array of durations
         
         for (const diag of diagnostics) {
             const config = diag.data?.['Client Configuration'] || 
@@ -490,52 +489,118 @@ class Analyzer {
                 timestamp: timestamp,
                 duration: duration,
                 machineId: machineId,
-                connectionMode: config?.ConnectionMode ?? config?.connectionMode ?? ''
+                connectionMode: config?.ConnectionMode ?? config?.connectionMode ?? '',
+                rawJson: diag._rawJson
             };
             snapshots.push(snapshot);
-            
-            // Track durations per machine for stats
-            if (!machineStats.has(machineId)) {
-                machineStats.set(machineId, []);
-            }
-            machineStats.get(machineId).push(duration);
         }
         
         // Sort by timestamp
         snapshots.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         
-        // Calculate count per machine for color intensity
-        const machineCounts = new Map();
-        for (const [machineId, durations] of machineStats) {
-            machineCounts.set(machineId, durations.length);
-        }
-        const maxCount = Math.max(...machineCounts.values(), 1);
-        
-        // Calculate per-machine statistics
-        const perMachineStats = [];
-        for (const [machineId, durations] of machineStats) {
-            const sorted = durations.sort((a, b) => a - b);
-            perMachineStats.push({
-                machineId: machineId,
-                count: durations.length,
-                relativeCount: durations.length / maxCount, // 0-1 for color intensity
-                ...this.computeMetricStats(sorted)
-            });
-        }
-        perMachineStats.sort((a, b) => b.count - a.count); // Sort by count descending
+        // Compute heatmap buckets
+        const heatmapData = this.computeHeatmapBuckets(snapshots);
         
         // Get unique machines and modes
         const uniqueMachines = [...new Set(snapshots.map(s => s.machineId).filter(Boolean))];
         const connectionModes = [...new Set(snapshots.map(s => s.connectionMode).filter(Boolean))];
         
         return {
-            snapshots: snapshots.slice(0, 1000), // Limit for performance
+            snapshots: snapshots, // Keep all for filtering
             totalSnapshots: snapshots.length,
-            perMachineStats: perMachineStats,
-            machineCounts: Object.fromEntries(machineCounts),
-            maxCount: maxCount,
+            heatmapData: heatmapData,
             uniqueMachines: uniqueMachines,
             connectionModes: connectionModes
+        };
+    }
+
+    /**
+     * Compute heatmap buckets from snapshots
+     * @param {Array} snapshots - Array of {timestamp, duration, machineId}
+     * @returns {Object} Heatmap data with time buckets, latency buckets, and counts
+     */
+    computeHeatmapBuckets(snapshots) {
+        if (snapshots.length === 0) {
+            return { timeBuckets: [], latencyBuckets: [], data: [], maxCount: 0 };
+        }
+
+        // Define latency buckets
+        const latencyBuckets = [
+            { min: 0, max: 100, label: '0-100ms' },
+            { min: 100, max: 500, label: '100-500ms' },
+            { min: 500, max: 1000, label: '500ms-1s' },
+            { min: 1000, max: 2000, label: '1-2s' },
+            { min: 2000, max: 5000, label: '2-5s' },
+            { min: 5000, max: Infinity, label: '5s+' }
+        ];
+
+        // Determine time range and bucket size
+        const timestamps = snapshots.map(s => new Date(s.timestamp).getTime());
+        const minTime = Math.min(...timestamps);
+        const maxTime = Math.max(...timestamps);
+        const timeRange = maxTime - minTime;
+        
+        // Aim for ~30-60 time buckets
+        let bucketSizeMs;
+        if (timeRange <= 60 * 60 * 1000) { // <= 1 hour
+            bucketSizeMs = 60 * 1000; // 1 minute
+        } else if (timeRange <= 24 * 60 * 60 * 1000) { // <= 1 day
+            bucketSizeMs = 5 * 60 * 1000; // 5 minutes
+        } else {
+            bucketSizeMs = 60 * 60 * 1000; // 1 hour
+        }
+
+        // Create time buckets
+        const timeBuckets = [];
+        const timeBucketMap = new Map(); // timestamp -> index
+        let currentTime = Math.floor(minTime / bucketSizeMs) * bucketSizeMs;
+        let idx = 0;
+        while (currentTime <= maxTime) {
+            const label = new Date(currentTime).toISOString().replace('T', ' ').substring(11, 19);
+            timeBuckets.push({ time: currentTime, label: label });
+            timeBucketMap.set(currentTime, idx);
+            currentTime += bucketSizeMs;
+            idx++;
+        }
+
+        // Count entries per bucket
+        const countMap = new Map(); // "timeIdx,latencyIdx" -> count
+        
+        for (const s of snapshots) {
+            const time = new Date(s.timestamp).getTime();
+            const timeBucket = Math.floor(time / bucketSizeMs) * bucketSizeMs;
+            const timeIdx = timeBucketMap.get(timeBucket);
+            
+            // Find latency bucket
+            let latencyIdx = latencyBuckets.length - 1; // default to last bucket
+            for (let i = 0; i < latencyBuckets.length; i++) {
+                if (s.duration >= latencyBuckets[i].min && s.duration < latencyBuckets[i].max) {
+                    latencyIdx = i;
+                    break;
+                }
+            }
+            
+            const key = `${timeIdx},${latencyIdx}`;
+            countMap.set(key, (countMap.get(key) || 0) + 1);
+        }
+
+        // Convert to heatmap data array [[timeIdx, latencyIdx, count], ...]
+        const data = [];
+        let maxCount = 0;
+        for (const [key, count] of countMap) {
+            const [timeIdx, latencyIdx] = key.split(',').map(Number);
+            data.push([timeIdx, latencyIdx, count]);
+            maxCount = Math.max(maxCount, count);
+        }
+
+        return {
+            timeBuckets: timeBuckets.map(t => t.label),
+            timeBucketsRaw: timeBuckets, // Keep raw for filtering
+            latencyBuckets: latencyBuckets.map(l => l.label),
+            latencyBucketsRaw: latencyBuckets, // Keep raw for filtering
+            data: data,
+            maxCount: maxCount,
+            bucketSizeMs: bucketSizeMs
         };
     }
 

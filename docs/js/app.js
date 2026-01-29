@@ -582,123 +582,380 @@ const app = {
 
         try {
             const data = JSON.parse(dataEl.textContent);
-            console.log('Client config data - series:', Object.keys(data.series || {}).length);
+            const heatmap = data.heatmap;
+            console.log('Client config heatmap data - cells:', heatmap?.data?.length);
+            
+            if (!heatmap || !heatmap.data || heatmap.data.length === 0) {
+                container.innerHTML = '<p style="color:#808080;padding:20px;">No data available for heatmap</p>';
+                return;
+            }
+            
+            // Store snapshots for filtering on selection
+            this.heatmapSnapshots = data.snapshots;
+            this.heatmapConfig = heatmap;
             
             const chart = echarts.init(container, null, { renderer: 'canvas' });
-            
-            // Generate color palette for machines based on relative count
-            const baseColors = ['#4fc3f7', '#81c784', '#ffb74d', '#ba68c8', '#f48fb1', '#80cbc4', '#ce93d8', '#a5d6a7'];
-            const machineIds = Object.keys(data.series || {});
-            
-            // Create series for each machine
-            const series = machineIds.map((machineId, idx) => {
-                const points = data.series[machineId];
-                const count = data.machineCounts[machineId] || 1;
-                const relativeCount = count / data.maxCount;
-                
-                // Color intensity based on relative count
-                const baseColor = baseColors[idx % baseColors.length];
-                const opacity = 0.3 + (relativeCount * 0.7); // 0.3 to 1.0
-                
-                return {
-                    name: machineId.length > 20 ? machineId.substring(0, 17) + '...' : machineId,
-                    type: 'scatter',
-                    data: points.map(p => [p.timestamp, p.duration]),
-                    symbolSize: 6 + (relativeCount * 6), // Size 6-12 based on count
-                    itemStyle: {
-                        color: baseColor,
-                        opacity: opacity
-                    },
-                    emphasis: {
-                        itemStyle: {
-                            shadowBlur: 10,
-                            shadowColor: baseColor
-                        }
-                    }
-                };
-            });
             
             const option = {
                 backgroundColor: 'transparent',
                 tooltip: {
-                    trigger: 'item',
+                    position: 'top',
                     backgroundColor: 'rgba(30, 30, 30, 0.95)',
                     borderColor: '#444',
                     textStyle: { color: '#d4d4d4' },
                     formatter: function(params) {
-                        return `<strong>${params.seriesName}</strong><br/>` +
-                               `Time: ${params.value[0]}<br/>` +
-                               `Duration: <span style="color:#4fc3f7">${params.value[1].toFixed(2)} ms</span>`;
+                        const timeLabel = heatmap.timeBuckets[params.value[0]] || '';
+                        const latencyLabel = heatmap.latencyBuckets[params.value[1]] || '';
+                        return `<strong>${timeLabel}</strong><br/>` +
+                               `Latency: ${latencyLabel}<br/>` +
+                               `Count: <span style="color:#4fc3f7">${params.value[2]}</span>`;
                     }
-                },
-                legend: {
-                    type: 'scroll',
-                    data: series.map(s => s.name),
-                    textStyle: { color: '#d4d4d4' },
-                    top: 10,
-                    pageTextStyle: { color: '#d4d4d4' }
                 },
                 toolbox: {
                     feature: {
-                        dataZoom: { 
-                            yAxisIndex: 'none', 
-                            title: { zoom: 'Drag to Zoom', back: 'Reset Zoom' },
-                            brushStyle: { borderWidth: 1, color: 'rgba(79, 195, 247, 0.2)', borderColor: '#4fc3f7' }
+                        brush: { 
+                            type: ['rect', 'clear'],
+                            title: { rect: 'Select Region', clear: 'Clear' }
                         },
-                        restore: { title: 'Reset All' },
                         saveAsImage: { title: 'Save Image', pixelRatio: 2 }
                     },
                     right: 20,
                     iconStyle: { borderColor: '#808080' },
                     emphasis: { iconStyle: { borderColor: '#4fc3f7' } }
                 },
-                dataZoom: [
-                    { type: 'inside', start: 0, end: 100, zoomOnMouseWheel: true, moveOnMouseMove: 'shift' },
-                    { 
-                        type: 'slider', start: 0, end: 100, height: 30, bottom: 10,
-                        borderColor: '#444', backgroundColor: '#1e1e1e',
-                        fillerColor: 'rgba(79, 195, 247, 0.2)',
-                        handleStyle: { color: '#4fc3f7', borderColor: '#4fc3f7' },
-                        textStyle: { color: '#808080' },
-                        brushSelect: true
-                    }
-                ],
-                grid: { left: 70, right: 30, top: 80, bottom: 90 },
+                brush: {
+                    toolbox: ['rect', 'clear'],
+                    brushLink: 'all',
+                    xAxisIndex: 0,
+                    yAxisIndex: 0,
+                    brushStyle: {
+                        borderWidth: 2,
+                        color: 'rgba(79, 195, 247, 0.3)',
+                        borderColor: '#4fc3f7'
+                    },
+                    outOfBrush: { colorAlpha: 0.3 }
+                },
+                grid: { left: 100, right: 50, top: 50, bottom: 80 },
                 xAxis: {
                     type: 'category',
-                    axisLabel: { color: '#808080', rotate: 30, fontSize: 10 },
+                    data: heatmap.timeBuckets,
+                    axisLabel: { color: '#808080', rotate: 45, fontSize: 9, interval: Math.floor(heatmap.timeBuckets.length / 15) },
                     axisLine: { lineStyle: { color: '#444' } },
-                    name: 'Time',
-                    nameTextStyle: { color: '#808080' }
+                    splitArea: { show: true, areaStyle: { color: ['rgba(30,30,30,0.3)', 'rgba(40,40,40,0.3)'] } }
                 },
                 yAxis: {
-                    type: 'value',
-                    name: 'Duration (ms)',
-                    axisLabel: { color: '#808080' },
-                    nameTextStyle: { color: '#808080' },
-                    splitLine: { lineStyle: { color: '#333' } }
+                    type: 'category',
+                    data: heatmap.latencyBuckets,
+                    axisLabel: { color: '#808080', fontSize: 10 },
+                    axisLine: { lineStyle: { color: '#444' } },
+                    splitArea: { show: true, areaStyle: { color: ['rgba(30,30,30,0.3)', 'rgba(40,40,40,0.3)'] } }
                 },
-                series: series,
+                visualMap: {
+                    min: 0,
+                    max: heatmap.maxCount,
+                    calculable: true,
+                    orient: 'horizontal',
+                    left: 'center',
+                    bottom: 5,
+                    textStyle: { color: '#808080' },
+                    inRange: {
+                        color: ['#1a237e', '#1565c0', '#42a5f5', '#4fc3f7', '#80deea', '#b2ebf2']
+                    }
+                },
+                series: [{
+                    name: 'Latency Distribution',
+                    type: 'heatmap',
+                    data: heatmap.data,
+                    label: {
+                        show: heatmap.data.length < 100,
+                        formatter: p => p.value[2] > 0 ? p.value[2] : '',
+                        color: '#fff',
+                        fontSize: 9
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }],
                 animation: true,
-                animationDuration: 800
+                animationDuration: 500
             };
             
             chart.setOption(option);
             
-            // Auto-activate dataZoom tool on load
+            // Handle brush selection
+            chart.on('brushSelected', (params) => {
+                this.handleHeatmapBrushSelection(params, heatmap);
+            });
+            
+            // Activate brush tool by default
             chart.dispatchAction({
                 type: 'takeGlobalCursor',
-                key: 'dataZoomSelect',
-                dataZoomSelectActive: true
+                key: 'brush',
+                brushOption: { brushType: 'rect' }
             });
             
             this.chartInstances.push(chart);
+            this.heatmapChart = chart;
             setTimeout(() => chart.resize(), 100);
             window.addEventListener('resize', () => chart.resize());
-            console.log('Client config chart created successfully');
+            console.log('Client config heatmap created successfully');
         } catch (e) {
             console.error('Error creating client config chart:', e);
         }
+    },
+
+    /**
+     * Handle heatmap brush selection - filter snapshots and show modal
+     */
+    handleHeatmapBrushSelection(params, heatmap) {
+        if (!params.batch || params.batch.length === 0) return;
+        
+        const batch = params.batch[0];
+        if (!batch.selected || batch.selected.length === 0) return;
+        
+        const selectedIndices = batch.selected[0]?.dataIndex || [];
+        if (selectedIndices.length === 0) return;
+        
+        // Get selected cell ranges
+        let minTimeIdx = Infinity, maxTimeIdx = -1;
+        let minLatencyIdx = Infinity, maxLatencyIdx = -1;
+        
+        for (const idx of selectedIndices) {
+            const cell = heatmap.data[idx];
+            if (!cell) continue;
+            minTimeIdx = Math.min(minTimeIdx, cell[0]);
+            maxTimeIdx = Math.max(maxTimeIdx, cell[0]);
+            minLatencyIdx = Math.min(minLatencyIdx, cell[1]);
+            maxLatencyIdx = Math.max(maxLatencyIdx, cell[1]);
+        }
+        
+        if (minTimeIdx === Infinity) return;
+        
+        // Get time and latency ranges
+        const timeStart = heatmap.timeBucketsRaw[minTimeIdx];
+        const timeEnd = heatmap.timeBucketsRaw[maxTimeIdx];
+        const latencyStart = heatmap.latencyBucketsRaw[minLatencyIdx];
+        const latencyEnd = heatmap.latencyBucketsRaw[maxLatencyIdx];
+        
+        // Filter snapshots
+        const filtered = this.heatmapSnapshots.filter(s => {
+            const time = new Date(s.timestamp).getTime();
+            const timeBucket = Math.floor(time / heatmap.bucketSizeMs) * heatmap.bucketSizeMs;
+            
+            if (timeBucket < timeStart.time || timeBucket > timeEnd.time) return false;
+            if (s.duration < latencyStart.min || s.duration >= latencyEnd.max) return false;
+            return true;
+        });
+        
+        if (filtered.length === 0) {
+            console.log('No snapshots match selection');
+            return;
+        }
+        
+        // Compute per-machine stats from filtered data
+        const machineMap = new Map();
+        for (const s of filtered) {
+            if (!machineMap.has(s.machineId)) {
+                machineMap.set(s.machineId, []);
+            }
+            machineMap.get(s.machineId).push(s);
+        }
+        
+        const machineStats = [];
+        for (const [machineId, snapshots] of machineMap) {
+            const durations = snapshots.map(s => s.duration).sort((a, b) => a - b);
+            const sum = durations.reduce((a, b) => a + b, 0);
+            machineStats.push({
+                machineId,
+                count: snapshots.length,
+                min: durations[0],
+                max: durations[durations.length - 1],
+                avg: sum / durations.length,
+                p50: this.percentile(durations, 50),
+                p75: this.percentile(durations, 75),
+                p90: this.percentile(durations, 90),
+                p95: this.percentile(durations, 95),
+                p99: this.percentile(durations, 99),
+                snapshots: snapshots
+            });
+        }
+        machineStats.sort((a, b) => b.count - a.count);
+        
+        // Show modal
+        this.showHeatmapSelectionModal({
+            timeRange: `${heatmap.timeBuckets[minTimeIdx]} - ${heatmap.timeBuckets[maxTimeIdx]}`,
+            latencyRange: `${heatmap.latencyBuckets[minLatencyIdx]} to ${heatmap.latencyBuckets[maxLatencyIdx]}`,
+            totalCount: filtered.length,
+            machineCount: machineStats.length,
+            machineStats: machineStats
+        });
+    },
+
+    /**
+     * Percentile calculation helper
+     */
+    percentile(sortedArr, p) {
+        if (sortedArr.length === 0) return 0;
+        const index = Math.ceil((p / 100) * sortedArr.length) - 1;
+        return sortedArr[Math.max(0, Math.min(index, sortedArr.length - 1))];
+    },
+
+    /**
+     * Show modal with heatmap selection results
+     */
+    showHeatmapSelectionModal(data) {
+        // Remove existing modal if any
+        const existing = document.getElementById('heatmap-selection-modal');
+        if (existing) existing.remove();
+        
+        let html = `
+            <div id="heatmap-selection-modal" class="json-modal" style="display:flex;">
+                <div class="json-modal-content" style="max-width:900px;width:90%;">
+                    <div class="json-modal-header">
+                        <div class="json-modal-title">🔍 Selected Region Analysis</div>
+                        <button class="json-modal-close" onclick="document.getElementById('heatmap-selection-modal').remove()">×</button>
+                    </div>
+                    <div class="json-modal-body" style="max-height:70vh;overflow-y:auto;">
+                        <div style="margin-bottom:15px;padding:10px;background:var(--bg-secondary);border-radius:6px;">
+                            <p><strong>Time:</strong> <span class="str">${this.escapeHtml(data.timeRange)}</span></p>
+                            <p><strong>Latency:</strong> <span class="str">${this.escapeHtml(data.latencyRange)}</span></p>
+                            <p><strong>Total:</strong> <span class="num">${data.totalCount.toLocaleString()}</span> requests from <span class="num">${data.machineCount}</span> machines</p>
+                        </div>
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th class="row-num">#</th>
+                                        <th>Machine ID</th>
+                                        <th>Count</th>
+                                        <th>Min</th>
+                                        <th>P50</th>
+                                        <th>P90</th>
+                                        <th>P99</th>
+                                        <th>Max</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+        `;
+        
+        data.machineStats.forEach((stat, i) => {
+            const displayId = stat.machineId.length > 25 
+                ? stat.machineId.substring(0, 22) + '...' 
+                : stat.machineId;
+            const rowId = `heatmap-machine-${i}`;
+            
+            html += `
+                <tr class="clickable-row" onclick="app.toggleHeatmapMachineDetails('${rowId}')">
+                    <td class="row-num">${i + 1}</td>
+                    <td title="${this.escapeHtml(stat.machineId)}"><span class="link">${this.escapeHtml(displayId)}</span></td>
+                    <td><span class="num">${stat.count}</span></td>
+                    <td><span class="num">${stat.min.toFixed(1)}</span></td>
+                    <td><span class="num">${stat.p50.toFixed(1)}</span></td>
+                    <td><span class="num">${stat.p90.toFixed(1)}</span></td>
+                    <td><span class="num">${stat.p99.toFixed(1)}</span></td>
+                    <td><span class="num">${stat.max.toFixed(1)}</span></td>
+                    <td><button class="btn-view" onclick="event.stopPropagation(); app.toggleHeatmapMachineDetails('${rowId}')">▶</button></td>
+                </tr>
+                <tr id="${rowId}" class="detail-row" style="display:none;">
+                    <td colspan="9">
+                        <div class="detail-content" style="padding:10px;max-height:300px;overflow-y:auto;">
+                            ${this.generateMachineEntriesTable(stat.snapshots, rowId)}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', html);
+        
+        // Store data for JSON viewing
+        this.heatmapSelectionData = data;
+    },
+
+    /**
+     * Generate entries table for a machine in heatmap modal
+     */
+    generateMachineEntriesTable(snapshots, prefix) {
+        let html = `
+            <table class="data-table" style="font-size:12px;">
+                <thead>
+                    <tr>
+                        <th class="row-num">#</th>
+                        <th>Timestamp</th>
+                        <th>Duration (ms)</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+        
+        snapshots.slice(0, 50).forEach((s, i) => {
+            const jsonId = `${prefix}-json-${i}`;
+            html += `
+                <tr>
+                    <td class="row-num">${i + 1}</td>
+                    <td><span class="str">${this.escapeHtml(s.timestamp)}</span></td>
+                    <td><span class="num">${s.duration.toFixed(2)}</span></td>
+                    <td><button class="btn-view" onclick="app.showHeatmapEntryJson('${jsonId}')">View</button></td>
+                </tr>
+            `;
+            // Store JSON data
+            if (!this.heatmapJsonCache) this.heatmapJsonCache = {};
+            this.heatmapJsonCache[jsonId] = s.rawJson;
+        });
+        
+        if (snapshots.length > 50) {
+            html += `<tr><td colspan="4" style="text-align:center;color:#808080;">... and ${snapshots.length - 50} more entries</td></tr>`;
+        }
+        
+        html += '</tbody></table>';
+        return html;
+    },
+
+    /**
+     * Toggle machine details in heatmap modal
+     */
+    toggleHeatmapMachineDetails(rowId) {
+        const row = document.getElementById(rowId);
+        if (!row) return;
+        
+        const isVisible = row.style.display !== 'none';
+        row.style.display = isVisible ? 'none' : 'table-row';
+        
+        // Update button
+        const btn = row.previousElementSibling?.querySelector('.btn-view');
+        if (btn) btn.textContent = isVisible ? '▶' : '▼';
+    },
+
+    /**
+     * Show JSON for heatmap entry
+     */
+    showHeatmapEntryJson(jsonId) {
+        const json = this.heatmapJsonCache?.[jsonId];
+        if (!json) return;
+        
+        this.showJsonModal(json, 'Diagnostics Entry');
+    },
+
+    /**
+     * Escape HTML helper
+     */
+    escapeHtml(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     },
 
     /**
@@ -1113,30 +1370,26 @@ function initCharts(){
         }catch(e){console.error('System chart error:',e)}
     }
     
-    // Client Config Chart - Latency by Machine scatter plot
+    // Client Config Heatmap
     const cfgEl=document.getElementById('clientConfigChart'),cfgData=document.getElementById('clientConfigChart-data');
     if(cfgEl&&cfgData){
         try{
-            const d=JSON.parse(cfgData.textContent),chart=echarts.init(cfgEl,'dark');
-            const baseColors=['#4fc3f7','#81c784','#ffb74d','#ba68c8','#f48fb1','#80cbc4','#ce93d8','#a5d6a7'];
-            const machineIds=Object.keys(d.series||{});
-            const series=machineIds.map((mid,idx)=>{
-                const pts=d.series[mid],cnt=d.machineCounts[mid]||1,rel=cnt/d.maxCount;
-                return{name:mid.length>20?mid.substring(0,17)+'...':mid,type:'scatter',
-                    data:pts.map(p=>[p.timestamp,p.duration]),symbolSize:6+(rel*6),
-                    itemStyle:{color:baseColors[idx%baseColors.length],opacity:0.3+(rel*0.7)}};
-            });
+            const d=JSON.parse(cfgData.textContent),hm=d.heatmap,chart=echarts.init(cfgEl,'dark');
+            if(!hm||!hm.data||hm.data.length===0){cfgEl.innerHTML='<p style="color:#808080;padding:20px;">No data</p>';return;}
             chart.setOption({
                 backgroundColor:'transparent',
-                tooltip:{trigger:'item',backgroundColor:'rgba(30,30,30,0.95)',borderColor:'#444',textStyle:{color:'#d4d4d4'},
-                    formatter:p=>'<strong>'+p.seriesName+'</strong><br/>Time: '+p.value[0]+'<br/>Duration: <span style="color:#4fc3f7">'+p.value[1].toFixed(2)+' ms</span>'},
-                legend:{type:'scroll',data:series.map(s=>s.name),textStyle:{color:'#d4d4d4'},top:10,pageTextStyle:{color:'#d4d4d4'}},
-                toolbox:{feature:{dataZoom:{yAxisIndex:'none'},restore:{},saveAsImage:{pixelRatio:2}},right:20},
-                dataZoom:[{type:'inside',start:0,end:100},{type:'slider',start:0,end:100,height:25,bottom:10}],
-                grid:{left:70,right:30,top:80,bottom:80},
-                xAxis:{type:'category',axisLabel:{color:'#808080',rotate:30,fontSize:10},axisLine:{lineStyle:{color:'#444'}},name:'Time',nameTextStyle:{color:'#808080'}},
-                yAxis:{type:'value',name:'Duration (ms)',axisLabel:{color:'#808080'},nameTextStyle:{color:'#808080'},splitLine:{lineStyle:{color:'#333'}}},
-                series:series,animation:true,animationDuration:800
+                tooltip:{position:'top',backgroundColor:'rgba(30,30,30,0.95)',borderColor:'#444',textStyle:{color:'#d4d4d4'},
+                    formatter:p=>'<strong>'+hm.timeBuckets[p.value[0]]+'</strong><br/>Latency: '+hm.latencyBuckets[p.value[1]]+'<br/>Count: <span style="color:#4fc3f7">'+p.value[2]+'</span>'},
+                toolbox:{feature:{saveAsImage:{pixelRatio:2}},right:20},
+                grid:{left:100,right:50,top:50,bottom:80},
+                xAxis:{type:'category',data:hm.timeBuckets,axisLabel:{color:'#808080',rotate:45,fontSize:9,interval:Math.floor(hm.timeBuckets.length/15)},axisLine:{lineStyle:{color:'#444'}}},
+                yAxis:{type:'category',data:hm.latencyBuckets,axisLabel:{color:'#808080',fontSize:10},axisLine:{lineStyle:{color:'#444'}}},
+                visualMap:{min:0,max:hm.maxCount,calculable:true,orient:'horizontal',left:'center',bottom:5,textStyle:{color:'#808080'},
+                    inRange:{color:['#1a237e','#1565c0','#42a5f5','#4fc3f7','#80deea','#b2ebf2']}},
+                series:[{name:'Latency Distribution',type:'heatmap',data:hm.data,
+                    label:{show:hm.data.length<100,formatter:p=>p.value[2]>0?p.value[2]:'',color:'#fff',fontSize:9},
+                    emphasis:{itemStyle:{shadowBlur:10,shadowColor:'rgba(0,0,0,0.5)'}}}],
+                animation:true,animationDuration:500
             });
             window.addEventListener('resize',()=>chart.resize());
         }catch(e){console.error('Config chart error:',e)}

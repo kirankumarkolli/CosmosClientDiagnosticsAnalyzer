@@ -188,7 +188,7 @@ value = sortedArray[max(0, min(index, count - 1))]
 |---------|---------|
 | Summary | Total lines, successfully parsed, repaired (truncated JSON fixed), failed to parse, latency threshold, high-latency count, high-latency rate |
 | **System Metrics Time Plot** | Interactive chart with CPU%, Memory (MB), Thread Wait (ms), TCP Connections over time |
-| **Client Configuration Time Plot** | Interactive scatter plot showing latency by time, color-coded by machine with relative count intensity |
+| **Latency Heatmap** | Interactive heatmap with brush selection for per-machine drill-down |
 | Operation Buckets | Table with clickable percentile drill-down |
 | High Latency Network | Top 100 interactions (collapsible) |
 | GroupBy ResourceType→OperationType | Sortable table, click row to expand entries |
@@ -221,26 +221,28 @@ When a single JSON entry is detected, the report shows a simplified view:
 
 Statistics table: Min, P50, P75, P90, P95, P99, Max, Avg for each metric.
 
-**Client Configuration Time Plot:**
+**Latency Heatmap:**
 
-Shows latency distribution over time, indexed by machine count with color-coded relative frequency.
+Interactive heatmap showing latency distribution over time with brush selection for drill-down analysis.
 
-| Metric | JSON Path | Display |
-|--------|-----------|---------|
-| Duration (ms) | `duration in milliseconds` | Y-axis |
-| Time | `start datetime` | X-axis |
-| MachineId | `data["Client Configuration"].MachineId` | Color-coded grouping |
+| Axis | Data | Bucketing |
+|------|------|-----------|
+| X-axis | Time | Dynamic: 1min (≤1hr), 5min (≤1day), 1hr (>1day) |
+| Y-axis | Latency | Fixed: 0-100ms, 100-500ms, 500ms-1s, 1-2s, 2-5s, 5s+ |
+| Color | Count | Intensity scale (darker = more requests) |
 
-**Visualization:**
-- Scatter plot with duration on Y-axis and time on X-axis
-- Points grouped by MachineId
-- Color intensity based on relative count (darker = more requests from that machine)
-- Helps identify:
-  - Machines with consistently high latencies
-  - Time periods with latency spikes
-  - Uneven load distribution across machines
+**Interaction:**
+1. **Brush Selection**: Drag to select a rectangular region on the heatmap
+2. **Modal Opens** with:
+   - Summary: Selected time range, latency range, total count, machine count
+   - Per-machine statistics table (count, P50, P90, P99, max)
+   - Click machine row → expands to show diagnostics entries
+   - Click entry → View JSON button
 
-Statistics table: Min, P50, P75, P90, P95, P99, Max, Avg for duration per machine.
+**Helps Identify:**
+- Time periods with latency spikes
+- Latency distribution patterns
+- Drill-down to specific machines in problematic regions
 
 **Table Features:**
 - Sortable columns (click header to toggle asc/desc)
@@ -448,7 +450,7 @@ docs/
 - ✅ JSON viewer modal with copy/format
 - ✅ **Timeline visualization** - Chrome-style waterfall with HH:MM:SS.mmm timestamps
 - ✅ **System Metrics Time Plot** - Interactive ECharts with CPU, Memory, Thread Wait, TCP
-- ✅ **Client Configuration Time Plot** - Interactive scatter plot with latency by machine (color-coded by relative count)
+- ✅ **Latency Heatmap** - Interactive ECharts heatmap with brush selection and per-machine drill-down modal
 - ✅ Self-contained HTML export
 - ✅ Dark theme (LinqPad-inspired)
 - ✅ Responsive design
