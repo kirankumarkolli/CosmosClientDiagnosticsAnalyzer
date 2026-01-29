@@ -1,9 +1,12 @@
 # Cosmos Diagnostics Analyzer - Web App Implementation Plan
 
-## ✅ STATUS: COMPLETED (2026-01-28)
+## ✅ STATUS: COMPLETED (2026-01-29)
 
-### Upcoming Features
-- **Timeline Visualization**: Chrome-style network waterfall (Gantt chart) in JSON Modal
+### Recent Updates (2026-01-29)
+- **Single JSON Entry Mode**: Paste or upload a single JSON entry for quick analysis
+- **Text Input Option**: Paste diagnostics JSON directly without file upload
+- **Enhanced Timeline**: HH:MM:SS.mmm timestamps on axis and rows
+- **GroupBy Sections for Single Entry**: StatusCode, LastTransportEvent, TransportException
 
 ### Bug Fixes
 - **2026-01-28**: Fixed button showing "Analyzing..." on page load - CSS `[hidden]` attribute override
@@ -71,10 +74,20 @@
 |---------|--------------|
 | Drag & drop | Drop zone with visual feedback |
 | File picker | Click to browse |
+| **Text paste** | Textarea for direct JSON paste |
 | **Supported formats** | `.txt`, `.json`, `.log`, `.xlsx`, `.xls`, `.xlsb`, `.csv`, `.ods` |
 | File info | Display filename and size |
 | Large file handling | Process in chunks, show progress |
 | LatencyThreshold | textbox input to accept integer type and use it to filter |
+
+**Text Input Option:**
+- Textarea below file upload for pasting JSON directly
+- Supports single JSON object (pretty-printed or minified)
+- Supports JSON array of diagnostics objects
+- Supports JSONL format (one JSON per line)
+- Line counter shows number of valid lines
+- Clear button to reset
+- File upload and text paste are mutually exclusive
 
 **Excel File Support:**
 
@@ -103,10 +116,18 @@
 | Feature | Specification |
 |---------|--------------|
 | Line-by-line parsing | Split by newline, parse each independently |
+| **Single JSON parsing** | Parse single pretty-printed JSON object |
+| **JSON array parsing** | Parse JSON array of diagnostics |
 | Truncated JSON repair | Close unclosed brackets/braces/strings |
 | Key normalization | Handle both `"duration in milliseconds"` and `durationInMs` |
 | Error tolerance | Skip unparseable lines, count failures |
 | Progress reporting | Callback for UI progress updates |
+| **Single entry detection** | Track when input is a single JSON entry |
+
+**JSON Parsing Order:**
+1. Try parsing as single JSON object (if starts with `{`)
+2. Try parsing as JSON array (if starts with `[`)
+3. Fall back to line-by-line JSONL parsing
 
 **JSON Repair Algorithm:**
 1. Attempt direct `JSON.parse()`
@@ -120,10 +141,12 @@
 | Feature | Specification |
 |---------|--------------|
 | Latency threshold | User-configurable (default: 600ms) |
+| **Single entry mode** | Skip latency filtering, analyze all interactions |
 | Operation bucketing | Group by operation name |
 | Network extraction | Extract from recursive `children` tree |
 | Grouping | By ResourceType→OperationType, StatusCode→SubStatusCode |
 | Transport events | Group by last event + bottleneck phase |
+| **Transport exceptions** | Group by exception message |
 | Endpoint analysis | Count unique physical addresses per phase |
 | Percentile calculation | P50, P75, P90, P95, P99 for latency distributions |
 
@@ -170,6 +193,22 @@ value = sortedArray[max(0, min(index, count - 1))]
 | GroupBy ResourceType→OperationType | Sortable table, click row to expand entries |
 | GroupBy StatusCode→SubStatusCode | Sortable table, click row to expand entries |
 | GroupBy LastTransportEvent | Sortable table, click row to expand phase breakdown with percentile drill-down and endpoint stats |
+| **GroupBy TransportException** | Sortable table showing exceptions grouped by message |
+
+**Single Entry Mode:**
+
+When a single JSON entry is detected, the report shows a simplified view:
+
+| Section | Behavior |
+|---------|----------|
+| Summary | Hidden |
+| System Metrics | Hidden |
+| Client Configuration | Hidden |
+| Operation Buckets | Hidden |
+| **Timeline** | Shown directly (no modal) |
+| **GroupBy StatusCode** | Shown |
+| **GroupBy LastTransportEvent** | Shown |
+| **GroupBy TransportException** | Shown (if exceptions present) |
 
 **System Metrics Time Plot:**
 | Metric | JSON Path | Display |
@@ -247,6 +286,8 @@ Percentile groups shown:
 
 **Trigger:** "📊 Show Timeline" button in JSON Modal (toggles between Timeline and JSON view)
 
+**Single Entry Mode:** Timeline is shown directly on the results page (no modal needed).
+
 **Behavior:** When timeline is shown, JSON content is hidden. Button toggles between "📊 Show Timeline" and "📄 Show JSON".
 
 **Data Source:** `StoreResponseStatistics[].StoreResult.transportRequestTimeline.requestTimeline[]`
@@ -264,12 +305,16 @@ Percentile groups shown:
 | Component | Description |
 |-----------|-------------|
 | Legend | Color-coded phase labels |
-| Time Axis | Auto-scaled horizontal axis (0ms to max duration) |
+| **Time Axis** | HH:MM:SS.mmm timestamps (actual wall-clock time) |
 | Swimlanes | One row per StoreResult request |
-| Row Label | StatusCode + truncated endpoint |
+| **Row Label** | HH:MM:SS.mmm + StatusCode + truncated endpoint (after /Replica/) |
 | Waterfall Bar | Stacked colored segments for each phase |
 | Tooltip | Hover to show all phase durations |
 | Zoom Controls | ➕ Zoom In, ➖ Zoom Out, ⟲ Reset |
+
+**Endpoint Display:**
+- Shows only the path after `/Replica/` for brevity
+- Full endpoint shown in tooltip on hover
 
 **Timing Calculation:**
 - Start Time: Inferred from first phase `startTimeUtc`
@@ -374,17 +419,21 @@ docs/
 ### Features Implemented
 
 - ✅ Drag-and-drop file upload with visual feedback
+- ✅ **Text paste input** for direct JSON paste without file upload
+- ✅ **Single JSON entry mode** with simplified view (Timeline + GroupBy sections)
 - ✅ **Excel file support** (.xlsx, .xls, .xlsb, .csv, .ods) - extracts diagnostics from column A
 - ✅ Truncated JSON repair (10-iteration algorithm)
+- ✅ **Multi-format JSON parsing** (single object, array, JSONL)
 - ✅ Percentile metrics (P50, P75, P90, P95, P99)
 - ✅ Operation bucketing with click-to-drill-down
 - ✅ GroupBy ResourceType → OperationType
 - ✅ GroupBy StatusCode → SubStatusCode  
 - ✅ GroupBy LastTransportEvent with phase breakdown
+- ✅ **GroupBy TransportException** for error analysis
 - ✅ Endpoint statistics per phase
 - ✅ Sortable tables (click headers)
 - ✅ JSON viewer modal with copy/format
-- ✅ **Timeline visualization** - Chrome-style waterfall in JSON modal
+- ✅ **Timeline visualization** - Chrome-style waterfall with HH:MM:SS.mmm timestamps
 - ✅ **System Metrics Time Plot** - Interactive ECharts with CPU, Memory, Thread Wait, TCP
 - ✅ **Client Configuration Time Plot** - Interactive ECharts with client metrics
 - ✅ Self-contained HTML export
