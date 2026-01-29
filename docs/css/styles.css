@@ -132,41 +132,57 @@ header h1 {
     display: inline-block;
 }
 
-/* Input Divider */
-.input-divider {
+/* Input Row - Side by Side Layout */
+.input-row {
     display: flex;
-    align-items: center;
-    margin: 25px 0;
-    max-width: 600px;
-    margin-left: auto;
-    margin-right: auto;
+    gap: 20px;
+    align-items: stretch;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
-.input-divider::before,
-.input-divider::after {
-    content: '';
+.input-row .upload-area {
     flex: 1;
-    height: 1px;
+    margin: 0;
+    min-height: 200px;
+}
+
+/* Vertical Input Divider */
+.input-divider-vertical {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 10px;
+}
+
+.input-divider-vertical::before,
+.input-divider-vertical::after {
+    content: '';
+    width: 1px;
+    flex: 1;
     background: var(--border-color);
 }
 
-.input-divider span {
-    padding: 0 20px;
+.input-divider-vertical span {
+    padding: 15px 0;
     color: var(--text-muted);
     font-size: 14px;
     font-weight: 500;
 }
 
 /* Text Input Area */
-.text-input-area {
-    max-width: 800px;
-    margin: 0 auto;
+.input-row .text-input-area {
+    flex: 1;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .text-input-area textarea {
     width: 100%;
-    min-height: 150px;
-    max-height: 400px;
+    flex: 1;
+    min-height: 180px;
     padding: 15px;
     background: var(--bg-secondary);
     border: 2px dashed var(--border-color);
@@ -847,6 +863,26 @@ footer a:hover {
 
     header h1 {
         font-size: 1.8em;
+    }
+
+    .input-row {
+        flex-direction: column;
+    }
+
+    .input-divider-vertical {
+        flex-direction: row;
+        padding: 10px 0;
+    }
+
+    .input-divider-vertical::before,
+    .input-divider-vertical::after {
+        width: auto;
+        height: 1px;
+        flex: 1;
+    }
+
+    .input-divider-vertical span {
+        padding: 0 20px;
     }
 
     .upload-area {

@@ -81,13 +81,14 @@
 | LatencyThreshold | textbox input to accept integer type and use it to filter |
 
 **Text Input Option:**
-- Textarea below file upload for pasting JSON directly
+- Textarea **side-by-side** with file drop area (vertical "OR" divider)
 - Supports single JSON object (pretty-printed or minified)
 - Supports JSON array of diagnostics objects
 - Supports JSONL format (one JSON per line)
 - Line counter shows number of valid lines
 - Clear button to reset
 - File upload and text paste are mutually exclusive
+- Responsive: stacks vertically on mobile
 
 **Excel File Support:**
 
